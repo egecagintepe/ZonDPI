@@ -1,0 +1,24 @@
+[package]
+name = "zondpi-gui"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "zondpi_gui_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.0.0", features = [] }
+
+[dependencies]
+serde_json.workspace = true
+serde.workspace = true
+tracing.workspace = true
+tokio.workspace = true
+interprocess.workspace = true
+zondpi-ipc-protocol.workspace = true
+tauri = { version = "2.0.0", features = ["tray-icon"] }
+tauri-plugin-shell = "2.0.0"

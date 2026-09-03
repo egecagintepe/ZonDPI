@@ -1,0 +1,9 @@
+{
+  "id": "superonline-default",
+  "name": "Turkcell Superonline (Varsayılan / -9)",
+  "description": "Superonline Fiber için Modeset -9 (wrong-chksum, wrong-seq, native-frag, reverse-frag, block-quic) ile yüksek hızlı DPI aşımı.",
+  "target_engine": "GoodbyeDPI",
+  "arguments": [
+    "-9"
+  ]
+}

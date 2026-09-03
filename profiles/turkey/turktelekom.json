@@ -1,0 +1,17 @@
+{
+  "id": "turkey-default",
+  "name": "Türk Telekom / Genel Türkiye Varsayılanı (-5 + Cloudflare DNS)",
+  "description": "Doğrulanmış Modeset -5 (native-frag, reverse-frag, auto-ttl 1-4-10, max-payload 1200) ve temiz Cloudflare DNS (1.1.1.1:53 / 2606:4700:4700::1111:53) ile Türkiye DPI aşımı.",
+  "target_engine": "GoodbyeDPI",
+  "arguments": [
+    "-5",
+    "--dns-addr",
+    "1.1.1.1",
+    "--dns-port",
+    "53",
+    "--dnsv6-addr",
+    "2606:4700:4700::1111",
+    "--dnsv6-port",
+    "53"
+  ]
+}

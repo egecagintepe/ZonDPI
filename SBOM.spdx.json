@@ -1,0 +1,98 @@
+{
+  "spdxVersion": "SPDX-2.3",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "ZonDPI-1.0.0-SBOM",
+  "documentNamespace": "https://github.com/zondpi/zondpi/spdx/v1.0.0",
+  "creationInfo": {
+    "creators": [
+      "Tool: ZonDPI-Build-Pipeline-1.0.0",
+      "Organization: ZonDPI Open Source Contributors"
+    ],
+    "created": "2026-09-02T16:45:00Z"
+  },
+  "packages": [
+    {
+      "name": "zondpi",
+      "SPDXID": "SPDXRef-Package-ZonDPI",
+      "versionInfo": "1.0.0",
+      "downloadLocation": "https://github.com/zondpi/zondpi",
+      "licenseConcluded": "Apache-2.0",
+      "licenseDeclared": "Apache-2.0",
+      "description": "Next-generation Turkish DPI circumvention service and GUI"
+    },
+    {
+      "name": "goodbyedpi",
+      "SPDXID": "SPDXRef-Package-GoodbyeDPI",
+      "versionInfo": "0.2.3rc3",
+      "downloadLocation": "https://github.com/ValdikSS/GoodbyeDPI",
+      "licenseConcluded": "Apache-2.0",
+      "licenseDeclared": "Apache-2.0",
+      "description": "Kernel-level passive/active DPI circumvention engine via WinDivert"
+    },
+    {
+      "name": "byedpi",
+      "SPDXID": "SPDXRef-Package-ByeDPI",
+      "versionInfo": "0.15",
+      "downloadLocation": "https://github.com/hufrea/byedpi",
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "description": "Userspace local SOCKS5 proxy engine with TCP segmentation tricks"
+    },
+    {
+      "name": "windivert",
+      "SPDXID": "SPDXRef-Package-WinDivert",
+      "versionInfo": "1.4.3",
+      "downloadLocation": "https://github.com/basil00/Divert",
+      "licenseConcluded": "LGPL-3.0-or-later",
+      "licenseDeclared": "LGPL-3.0-or-later",
+      "description": "Windows packet capture and diversion network driver and user API"
+    },
+    {
+      "name": "tauri",
+      "SPDXID": "SPDXRef-Package-Tauri",
+      "versionInfo": "2.0.0",
+      "downloadLocation": "https://crates.io/crates/tauri",
+      "licenseConcluded": "MIT OR Apache-2.0",
+      "licenseDeclared": "MIT OR Apache-2.0"
+    },
+    {
+      "name": "tokio",
+      "SPDXID": "SPDXRef-Package-Tokio",
+      "versionInfo": "1.38",
+      "downloadLocation": "https://crates.io/crates/tokio",
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT"
+    },
+    {
+      "name": "react",
+      "SPDXID": "SPDXRef-Package-React",
+      "versionInfo": "19.2.8",
+      "downloadLocation": "https://www.npmjs.com/package/react",
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT"
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-Package-ZonDPI"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-ZonDPI",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-GoodbyeDPI"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-ZonDPI",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-ByeDPI"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-GoodbyeDPI",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-WinDivert"
+    }
+  ]
+}

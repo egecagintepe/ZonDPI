@@ -1,0 +1,14 @@
+[package]
+name = "zondpi-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+zondpi-ipc-protocol = { workspace = true }
+clap = { workspace = true }
+tokio = { workspace = true }
+serde_json = { workspace = true }
+interprocess = { workspace = true }
+thiserror = { workspace = true }

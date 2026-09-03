@@ -1,0 +1,48 @@
+# Rust
+target/
+**/*.rs.bk
+
+# C / Make
+*.o
+*.obj
+*.exe
+*.dll
+*.sys
+*.lib
+*.a
+*.so
+*.dylib
+!third_party/windivert/**/*.dll
+!third_party/windivert/**/*.sys
+
+# Build Outputs & Generated Artifacts
+artifacts/
+dist/
+dist-ssr/
+release/
+app/gui/src-tauri/installer-stage/
+
+# Node / Frontend
+node_modules/
+*.local
+
+# IDE / OS
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.DS_Store
+Thumbs.db
+
+# Audit Scratch (Keep _audit out of release builds)
+_audit/
+
+# Logs and temporary files
+*.log
+*.tmp
+dump*.txt
+debug*.txt
+.env
+.env.*

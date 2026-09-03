@@ -1,0 +1,64 @@
+name: "Bug Report"
+description: "File a bug report for an issue or crash in ZonDPI"
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+        Please search existing issues before submitting to avoid duplicates.
+  - type: input
+    id: version
+    attributes:
+      label: "ZonDPI Version"
+      description: "Which version of ZonDPI are you using? (e.g., v1.0.4)"
+      placeholder: "1.0.4"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: "Windows Version"
+      options:
+        - "Windows 11 (23H2 or newer)"
+        - "Windows 11 (22H2 or older)"
+        - "Windows 10 (21H2 or newer)"
+        - "Windows 10 (older build)"
+        - "Other"
+    validations:
+      required: true
+  - type: input
+    id: isp
+    attributes:
+      label: "Internet Service Provider (ISP)"
+      description: "e.g., Türk Telekom Fiber, Turkcell Superonline, Vodafone Net, TurkNet"
+      placeholder: "Türk Telekom Fiber"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: "Bug Description"
+      description: "A clear and concise description of what the problem is."
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: "Steps to Reproduce"
+      description: "Steps to reproduce the behavior."
+      placeholder: |
+        1. Launch ZonDPI
+        2. Click 'Start'
+        3. Observe error message...
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: "CLI Diagnostic Output"
+      description: "Run `zondpi-cli.exe diag` in an elevated terminal and paste output here."
+      render: shell
+    validations:
+      required: false

@@ -1,0 +1,11 @@
+[package]
+name = "zondpi-profile-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+zondpi-packet-engine = { path = "../packet-engine" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }

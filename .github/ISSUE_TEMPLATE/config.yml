@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "GitHub Discussions"
+    url: "https://github.com/egecagintepe/ZonDPI/discussions"
+    about: "Ask questions, share configuration presets, and discuss with the community."
+  - name: "Security Vulnerability Reporting"
+    url: "https://github.com/egecagintepe/ZonDPI/security/advisories/new"
+    about: "Privately report security vulnerabilities or sensitive issues."

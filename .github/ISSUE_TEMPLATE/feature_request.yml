@@ -1,0 +1,31 @@
+name: "Feature Request"
+description: "Suggest an idea or enhancement for ZonDPI"
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea to improve ZonDPI? We'd love to hear it!
+        Note: ZonDPI is not a VPN and will not incorporate proxy tunneling or IP-masking services.
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Problem or Need"
+      description: "Is your feature request related to a problem? Please describe."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: "Proposed Solution"
+      description: "Describe the solution or behavior you would like to see."
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Alternative Solutions Considered"
+      description: "Describe any alternative solutions or features you've considered."
+    validations:
+      required: false

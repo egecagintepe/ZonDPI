@@ -1,0 +1,14 @@
+[package]
+name = "zondpi-compatibility"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+zondpi-packet-engine = { path = "../packet-engine" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }

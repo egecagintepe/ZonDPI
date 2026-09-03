@@ -1,0 +1,32 @@
+{
+  "bundle": {
+    "resources": {
+      "installer-stage/zondpi-service.exe": "zondpi-service.exe",
+      "installer-stage/zondpi-cli.exe": "zondpi-cli.exe",
+      "installer-stage/engines/goodbye/goodbyedpi.exe": "engines/goodbye/goodbyedpi.exe",
+      "installer-stage/engines/goodbye/WinDivert.dll": "engines/goodbye/WinDivert.dll",
+      "installer-stage/engines/goodbye/WinDivert64.sys": "engines/goodbye/WinDivert64.sys",
+      "installer-stage/engines/byedpi/ciadpi.exe": "engines/byedpi/ciadpi.exe",
+      "installer-stage/third_party/windivert/WinDivert.dll": "third_party/windivert/WinDivert.dll",
+      "installer-stage/third_party/windivert/WinDivert64.sys": "third_party/windivert/WinDivert64.sys",
+      "installer-stage/profiles/schema/profile.schema.json": "profiles/schema/profile.schema.json",
+      "installer-stage/profiles/turkey/byedpi_kaspersky_mode.json": "profiles/turkey/byedpi_kaspersky_mode.json",
+      "installer-stage/profiles/turkey/superonline_default.json": "profiles/turkey/superonline_default.json",
+      "installer-stage/profiles/turkey/turktelekom.json": "profiles/turkey/turktelekom.json",
+      "installer-stage/docs/ARCHITECTURE.md": "docs/ARCHITECTURE.md",
+      "installer-stage/docs/BUILD.md": "docs/BUILD.md",
+      "installer-stage/docs/COMPATIBILITY_KASPERSKY.md": "docs/COMPATIBILITY_KASPERSKY.md",
+      "installer-stage/docs/COMPATIBILITY_MATRIX.md": "docs/COMPATIBILITY_MATRIX.md",
+      "installer-stage/docs/GUI.md": "docs/GUI.md",
+      "installer-stage/docs/INSTALL.md": "docs/INSTALL.md",
+      "installer-stage/docs/IPC_PROTOCOL.md": "docs/IPC_PROTOCOL.md",
+      "installer-stage/docs/PRIVACY.md": "docs/PRIVACY.md",
+      "installer-stage/docs/RELEASE_SIGNING.md": "docs/RELEASE_SIGNING.md",
+      "installer-stage/docs/ROADMAP.md": "docs/ROADMAP.md",
+      "installer-stage/docs/SECURITY_MODEL.md": "docs/SECURITY_MODEL.md",
+      "installer-stage/docs/SERVICE.md": "docs/SERVICE.md",
+      "installer-stage/docs/UPSTREAM_AUDIT.md": "docs/UPSTREAM_AUDIT.md",
+      "installer-stage/docs/VALIDATION_MATRIX_TR.md": "docs/VALIDATION_MATRIX_TR.md"
+    }
+  }
+}

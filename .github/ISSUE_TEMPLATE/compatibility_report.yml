@@ -1,0 +1,56 @@
+name: "Compatibility Report"
+description: "Report test results for an ISP, router, or antivirus configuration"
+title: "[Compat]: "
+labels: ["compatibility"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping validate ZonDPI across diverse networks and environments!
+  - type: input
+    id: isp
+    attributes:
+      label: "ISP & Connection Type"
+      description: "e.g., Türk Telekom VDSL, Superonline Fiber, Vodafone 4G/5G"
+    validations:
+      required: true
+  - type: input
+    id: city
+    attributes:
+      label: "City / Region"
+      description: "e.g., Istanbul, Ankara, Izmir"
+    validations:
+      required: false
+  - type: dropdown
+    id: status
+    attributes:
+      label: "Operational Result"
+      options:
+        - "Working Perfectly (All tested sites & Discord voice operational)"
+        - "Partially Working (Websites work, Discord voice/RTC issues)"
+        - "Blocked / Timed Out"
+        - "Slow / Degraded Latency"
+    validations:
+      required: true
+  - type: input
+    id: antivirus
+    attributes:
+      label: "Installed Antivirus / Security Software"
+      placeholder: "Windows Defender, Kaspersky Premium, Bitdefender, etc."
+    validations:
+      required: true
+  - type: textarea
+    id: profile_used
+    attributes:
+      label: "Profile & Settings"
+      description: "Which profile or custom settings were used? (e.g., Turkey Default, Superonline Default, Kaspersky Mode)"
+    validations:
+      required: true
+  - type: textarea
+    id: verification_logs
+    attributes:
+      label: "Validation Output"
+      description: "Output from `curl -v https://discord.com/` or `zondpi-cli.exe diag`"
+      render: shell
+    validations:
+      required: false

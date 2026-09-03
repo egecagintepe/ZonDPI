@@ -1,0 +1,11 @@
+{
+  "id": "byedpi-kaspersky-mode",
+  "name": "Kaspersky Uyumluluk Modu (ByeDPI SOCKS5)",
+  "description": "Sürücüsüz, yerel SOCKS5 proxy tabanlı DPI aşımı. Kaspersky veya diğer antivirüs yazılımları aktifken tam uyumlu çalışır.",
+  "target_engine": "ByeDPI",
+  "arguments": [
+    "--split", "1+s",
+    "--disorder", "3+s",
+    "--auto=torst"
+  ]
+}
