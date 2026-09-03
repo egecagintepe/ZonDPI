@@ -54,7 +54,7 @@ jobs:
           pwsh -ExecutionPolicy Bypass -File build.ps1 -Configuration Release
 
       - name: Upload Release Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: zondpi-release-${{ inputs.version }}
           path: release/
