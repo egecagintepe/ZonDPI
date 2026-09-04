@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.5] - 2026-09-04
+
+### Fixed
+- **Windows Service Startup Persistence (HOTFIX)**:
+  - Fixed Windows Service registration using `SERVICE_AUTO_START` (`ServiceStartType::AutoStart` / SCM start type 2) instead of manual on-demand start (`SERVICE_DEMAND_START` / 3).
+  - Ensured ZonDPI service starts automatically upon Windows reboot and remains available in the background for IPC connections.
+  - Added explicit SCM configuration command (`sc.exe config ZonDPI start= auto`) to NSIS post-install hooks to guarantee persistent automatic startup across all installation/reinstallation paths.
+  - Handled upgrade/reinstallation idempotently by updating existing service configuration via Windows SCM `ChangeServiceConfig`.
+  - Maintained architectural separation between background service startup (Automatic) and packet protection startup (controlled by user preference).
+  - Added automated regression tests for service startup configuration constants.
+
 ## [1.0.4] - 2026-09-03
 
 ### Added

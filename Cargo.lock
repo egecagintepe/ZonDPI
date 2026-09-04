@@ -4988,7 +4988,7 @@ checksum = "29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b"
 
 [[package]]
 name = "zondpi-cli"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "clap",
  "interprocess",
@@ -5000,7 +5000,7 @@ dependencies = [
 
 [[package]]
 name = "zondpi-compatibility"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "async-trait",
  "serde",
@@ -5013,7 +5013,7 @@ dependencies = [
 
 [[package]]
 name = "zondpi-diagnostics"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "serde",
  "serde_json",
@@ -5023,7 +5023,7 @@ dependencies = [
 
 [[package]]
 name = "zondpi-dns"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "serde",
  "serde_json",
@@ -5032,7 +5032,7 @@ dependencies = [
 
 [[package]]
 name = "zondpi-engine-byedpi"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "async-trait",
  "serde",
@@ -5044,7 +5044,7 @@ dependencies = [
 
 [[package]]
 name = "zondpi-engine-goodbye"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "async-trait",
  "serde",
@@ -5056,11 +5056,11 @@ dependencies = [
 
 [[package]]
 name = "zondpi-flow-tracker"
-version = "1.0.4"
+version = "1.0.5"
 
 [[package]]
 name = "zondpi-gui"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "interprocess",
  "serde",
@@ -5075,7 +5075,7 @@ dependencies = [
 
 [[package]]
 name = "zondpi-ipc-protocol"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "serde",
  "serde_json",
@@ -5085,7 +5085,7 @@ dependencies = [
 
 [[package]]
 name = "zondpi-packet-engine"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "async-trait",
  "serde",
@@ -5096,7 +5096,7 @@ dependencies = [
 
 [[package]]
 name = "zondpi-profile-engine"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "serde",
  "serde_json",
@@ -5106,14 +5106,14 @@ dependencies = [
 
 [[package]]
 name = "zondpi-protocol-parsers"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "thiserror 1.0.69",
 ]
 
 [[package]]
 name = "zondpi-service"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "clap",
  "interprocess",

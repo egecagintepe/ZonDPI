@@ -13,6 +13,7 @@ pub const SERVICE_NAME: &str = "ZonDPI";
 pub const SERVICE_DISPLAY_NAME: &str = "ZonDPI Service";
 pub const SERVICE_DESCRIPTION: &str =
     "Automated DPI circumvention and packet routing backend daemon.";
+pub const SERVICE_START_TYPE: ServiceStartType = ServiceStartType::AutoStart;
 
 #[derive(Error, Debug)]
 pub enum ServiceManagementError {
@@ -26,7 +27,9 @@ pub enum ServiceManagementError {
     NotRunning,
 }
 
-/// Installs ZonDPI as a Windows Service in the SCM.
+/// Installs ZonDPI as a Windows Service in the SCM with Automatic startup.
+/// If the service is already installed (e.g. during upgrade or reinstall),
+/// its configuration is updated to ensure SERVICE_AUTO_START and current binary path.
 pub fn install_service(custom_exe_path: Option<&Path>) -> Result<(), ServiceManagementError> {
     let current_exe = match custom_exe_path {
         Some(p) => p.to_path_buf(),
@@ -38,13 +41,13 @@ pub fn install_service(custom_exe_path: Option<&Path>) -> Result<(), ServiceMana
         ServiceManagerAccess::CONNECT | ServiceManagerAccess::CREATE_SERVICE,
     )?;
 
-    info!(exe = %current_exe.display(), "Registering ZonDPI service in Windows SCM");
+    info!(exe = %current_exe.display(), "Registering ZonDPI service in Windows SCM (AUTO_START)");
 
     let service_info = ServiceInfo {
         name: SERVICE_NAME.into(),
         display_name: SERVICE_DISPLAY_NAME.into(),
         service_type: ServiceType::OWN_PROCESS,
-        start_type: ServiceStartType::OnDemand,
+        start_type: SERVICE_START_TYPE,
         error_control: ServiceErrorControl::Normal,
         executable_path: current_exe,
         launch_arguments: vec![],
@@ -53,10 +56,31 @@ pub fn install_service(custom_exe_path: Option<&Path>) -> Result<(), ServiceMana
         account_password: None,
     };
 
-    let service = manager.create_service(&service_info, ServiceAccess::empty())?;
+    match manager.create_service(&service_info, ServiceAccess::CHANGE_CONFIG) {
+        Ok(service) => {
+            let _ = service.set_description(SERVICE_DESCRIPTION);
+            info!(
+                "Service '{}' successfully registered with AUTO_START",
+                SERVICE_NAME
+            );
+        }
+        Err(windows_service::Error::Winapi(ref io_err)) if io_err.raw_os_error() == Some(1073) => {
+            // ERROR_SERVICE_EXISTS (1073 / 0x431) - Service already registered; update config
+            info!(
+                "Service '{}' already exists in SCM; reconfiguring to AUTO_START",
+                SERVICE_NAME
+            );
+            let service = manager.open_service(SERVICE_NAME, ServiceAccess::CHANGE_CONFIG)?;
+            service.change_config(&service_info)?;
+            let _ = service.set_description(SERVICE_DESCRIPTION);
+            info!(
+                "Service '{}' configuration successfully updated to AUTO_START",
+                SERVICE_NAME
+            );
+        }
+        Err(e) => return Err(e.into()),
+    }
 
-    info!("Service '{}' successfully registered", SERVICE_NAME);
-    drop(service);
     Ok(())
 }
 
@@ -64,10 +88,21 @@ pub fn install_service(custom_exe_path: Option<&Path>) -> Result<(), ServiceMana
 pub fn uninstall_service() -> Result<(), ServiceManagementError> {
     let manager = ServiceManager::local_computer(None::<&str>, ServiceManagerAccess::CONNECT)?;
 
-    let service = manager.open_service(
+    let service = match manager.open_service(
         SERVICE_NAME,
         ServiceAccess::STOP | ServiceAccess::DELETE | ServiceAccess::QUERY_STATUS,
-    )?;
+    ) {
+        Ok(s) => s,
+        Err(windows_service::Error::Winapi(ref io_err)) if io_err.raw_os_error() == Some(1060) => {
+            // ERROR_SERVICE_DOES_NOT_EXIST (1060 / 0x424) - Idempotent removal
+            info!(
+                "Service '{}' does not exist in SCM, nothing to uninstall",
+                SERVICE_NAME
+            );
+            return Ok(());
+        }
+        Err(e) => return Err(e.into()),
+    };
 
     // Stop service first if running
     if let Ok(status) = service.query_status() {
@@ -133,4 +168,24 @@ pub fn query_status() -> Result<ServiceStatus, ServiceManagementError> {
 
     let status = service.query_status()?;
     Ok(status)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_service_startup_type_is_auto_start() {
+        assert_eq!(SERVICE_START_TYPE, ServiceStartType::AutoStart);
+        // SCM constant SERVICE_AUTO_START = 2 (not SERVICE_DEMAND_START = 3)
+        assert_eq!(SERVICE_START_TYPE.to_raw(), 2);
+    }
+
+    #[test]
+    fn test_service_constants_integrity() {
+        assert_eq!(SERVICE_NAME, "ZonDPI");
+        assert_eq!(SERVICE_DISPLAY_NAME, "ZonDPI Service");
+        assert!(!SERVICE_DESCRIPTION.is_empty());
+        assert!(SERVICE_DESCRIPTION.contains("DPI"));
+    }
 }

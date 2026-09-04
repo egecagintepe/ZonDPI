@@ -1,10 +1,27 @@
-# ZonDPI 1.0.1 — Sürüm Notları (Release Notes)
+# ZonDPI 1.0.5 — Sürüm Notları (Release Notes)
 
 Türkiye'deki DPI (Derin Paket İnceleme) kaynaklı bağlantı engellemelerini ve bant daraltmalarını aşmak için tasarlanmış, modern ve açık kaynaklı Windows sistemi.
 
 ---
 
-## 1. v1.0.1 İle Gelen Düzeltmeler ve Yenilikler (What's New in v1.0.1)
+## 1. v1.0.5 Hotfix — Windows Servis Başlangıç Kalıcılığı (Service Startup Persistence)
+
+- **Windows Servisi Kalıcı Otomatik Başlatma (SERVICE_AUTO_START):**
+  - Gerçek sistem yeniden başlatma (reboot) testlerinde tespit edilen ve servisin `DEMAND_START` (elle başlatma) olarak kaydedilmesi nedeniyle sistem açılışında otomatik çalışmamasına yol açan hata giderildi.
+  - Artık hem `zondpi-service.exe install` hem de NSIS kurulumcusu servisi `SERVICE_AUTO_START` (SCM Başlangıç Türü 2) olarak yapılandırır.
+  - Sistem yeniden başladığında ZonDPI arka plan servisi Windows tarafından otomatik başlatılır ve IPC named pipe arayüzü anında hazır olur.
+- **Mimari Ayrımı (Servis Başlangıcı vs. Koruma Tercihi):**
+  - Servisin Windows açılışında arka planda otomatik başlaması, korumanın zorla başlatılacağı anlamına gelmez.
+  - Servis arka planda çalışır ancak koruma motoru "Kapalı" (Idle) modda bekler.
+  - Kullanıcı Ayarlar ekranından *"Windows başladığında korumayı otomatik etkinleştir"* tercihini açmışsa koruma otomatik olarak devreye girer; aksi halde kullanıcı tercihi korunur.
+- **Yükseltme ve Yeniden Kurulum Güvencesi:**
+  - Mevcut kurulu sistemlerde kurulum yenilendiğinde servis SCM yapılandırması otomatik olarak `AUTO_START` durumuna güncellenir.
+- **Otomatik Regresyon Testleri:**
+  - Servis başlangıç türü sabitlerinin (`SERVICE_AUTO_START = 2`) her derlemede otomatik doğrulanması sağlandı.
+
+---
+
+## 2. v1.0.4 Özellikleri ve Mimari Yapı (Features & Architecture)
 
 - **Kurulumcu Dizin Ağacı Düzeltmesi (Installer Path Hotfix):** 
   - Önceki sürümde `_up_\_up_\_up_\dist` şeklinde oluşan iç içe dizin yerleşimi tamamen giderildi.

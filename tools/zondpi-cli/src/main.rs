@@ -703,7 +703,7 @@ mod tests {
     #[test]
     fn test_status_default_presentation_contains_no_internal_engine_leakage() {
         let dummy_status = ServiceStatusDto {
-            version: "1.0.4".to_string(),
+            version: "1.0.5".to_string(),
             uptime_seconds: 120,
             service_state: "Running".to_string(),
             mode: "Otomatik".to_string(),

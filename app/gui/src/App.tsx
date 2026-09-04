@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import "./index.css";
 
@@ -111,6 +111,10 @@ function App() {
     return localStorage.getItem("zondpi_developer_mode") === "true";
   });
   const [showRawLogs, setShowRawLogs] = useState(false);
+  const [autoProtect, setAutoProtect] = useState<boolean>(() => {
+    return localStorage.getItem("zondpi_auto_protect") === "true";
+  });
+  const autoProtectTriggered = useRef(false);
   const [startOnBoot, setStartOnBoot] = useState<boolean>(() => {
     return localStorage.getItem("zondpi_autostart") === "true";
   });
@@ -125,11 +129,17 @@ function App() {
         const res: any = await invoke("ipc_status");
         if (res?.success && res.result) {
           const r = res.result;
-          const running = r.service_state === "Running" || Boolean(r.active_engine);
+          const running = Boolean(r.active_engine);
           setIsRunning(running);
           setActiveEngine(r.active_engine || "");
           if (r.active_profile) setActiveProfile(r.active_profile);
           setStatus(running ? "active" : "idle");
+
+          // Auto-protection preference on startup
+          if (autoProtect && !autoProtectTriggered.current && !running && r.service_state === "Running") {
+            autoProtectTriggered.current = true;
+            invoke("ipc_start_auto", { profile: selectedProfile || "turkey-default" }).catch(console.error);
+          }
         } else {
           setStatus("error");
           setIsRunning(false);
@@ -142,7 +152,7 @@ function App() {
     check();
     const id = setInterval(check, 2500);
     return () => clearInterval(id);
-  }, []);
+  }, [autoProtect, selectedProfile]);
 
   // ── Fetch recommendation ──
   useEffect(() => {
@@ -246,7 +256,7 @@ function App() {
 
         <div className="sidebar-footer">
           <button className="about-link" onClick={() => setPage("about")}>Hakkında</button>
-          <span className="version-text">v1.0.4</span>
+          <span className="version-text">v1.0.5</span>
         </div>
       </aside>
 
@@ -460,6 +470,23 @@ function App() {
                   <span className="toggle-track" />
                 </label>
               </div>
+              <div className="setting-row">
+                <div>
+                  <div className="setting-label">Windows başladığında korumayı otomatik etkinleştir</div>
+                  <div className="setting-hint">Uygulama veya Windows açıldığında korumayı otomatik olarak devreye alır.</div>
+                </div>
+                <label className="toggle">
+                  <input
+                    type="checkbox"
+                    checked={autoProtect}
+                    onChange={(e) => {
+                      setAutoProtect(e.target.checked);
+                      localStorage.setItem("zondpi_auto_protect", String(e.target.checked));
+                    }}
+                  />
+                  <span className="toggle-track" />
+                </label>
+              </div>
             </div>
 
             <div className="settings-section">
@@ -539,7 +566,7 @@ function App() {
             <div className="about-header">
               <div className="about-icon">Z</div>
               <div className="page-title">ZonDPI</div>
-              <div className="about-version">Sürüm 1.0.4</div>
+              <div className="about-version">Sürüm 1.0.5</div>
               <div className="about-desc">
                 Açık kaynak Windows bağlantı yardımcı aracı. Türkiye'deki DPI kaynaklı erişim kısıtlamalarını aşmak için geliştirilmiştir.
               </div>

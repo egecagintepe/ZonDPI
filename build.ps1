@@ -419,7 +419,7 @@ $CargoTomlContent = Get-Content (Join-Path $ProjectRoot "Cargo.toml") -Raw
 if ($CargoTomlContent -match 'version\s*=\s*"([^"]+)"') {
     $PkgVersion = $matches[1]
 } else {
-    $PkgVersion = "1.0.4"
+    $PkgVersion = "1.0.5"
 }
 
 if ($GeneratedSetup) {

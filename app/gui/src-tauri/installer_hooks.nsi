@@ -6,6 +6,10 @@
   nsExec::ExecToLog '"$INSTDIR\zondpi-service.exe" install'
   Pop $0
   DetailPrint "ZonDPI service registration result: $0"
+  DetailPrint "Configuring ZonDPI Windows Service startup to Automatic..."
+  nsExec::ExecToLog 'sc.exe config ZonDPI start= auto'
+  Pop $0
+  DetailPrint "ZonDPI service startup config result: $0"
   DetailPrint "Starting ZonDPI Windows Service..."
   nsExec::ExecToLog '"$INSTDIR\zondpi-service.exe" start'
   Pop $0

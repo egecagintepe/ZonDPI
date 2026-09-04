@@ -145,8 +145,7 @@ pub fn run() {
                             if let Ok(resp) = client.send_command(IpcCommand::GetStatus).await {
                                 if let Some(res) = resp.result {
                                     if let Ok(s) = serde_json::from_value::<ServiceStatusDto>(res) {
-                                        let is_running = s.service_state == "Running"
-                                            || s.active_engine.is_some();
+                                        let is_running = s.active_engine.is_some();
                                         if is_running {
                                             let _ =
                                                 client.send_command(IpcCommand::StopEngine).await;

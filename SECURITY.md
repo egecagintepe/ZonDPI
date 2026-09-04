@@ -6,8 +6,8 @@ Security updates and critical vulnerability patches are applied to the following
 
 | Version | Supported          | Notes |
 | ------- | ------------------ | ----- |
-| 1.0.4   | :white_check_mark: | Current stable release |
-| < 1.0.4 | :x:                | Legacy / deprecated |
+| 1.0.5   | :white_check_mark: | Current stable release |
+| < 1.0.5 | :x:                | Legacy / deprecated |
 
 ---
 

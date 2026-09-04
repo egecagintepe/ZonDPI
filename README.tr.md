@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/Lisans-Apache_2.0-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows_10_%2F_11_x64-0078D6.svg)](docs/COMPATIBILITY.md)
-[![Sürüm](https://img.shields.io/badge/S%C3%BCr%C3%BCm-v1.0.4-success.svg)](https://github.com/egecagintepe/ZonDPI/releases/latest)
+[![Sürüm](https://img.shields.io/badge/S%C3%BCr%C3%BCm-v1.0.5-success.svg)](https://github.com/egecagintepe/ZonDPI/releases/latest)
 [![CI](https://github.com/egecagintepe/ZonDPI/actions/workflows/ci.yml/badge.svg)](https://github.com/egecagintepe/ZonDPI/actions/workflows/ci.yml)
 [![Sıfır Telemetri](https://img.shields.io/badge/Telemetri-S%C4%B1f%C4%B1r-brightgreen.svg)](docs/PRIVACY.md)
 
@@ -55,11 +55,11 @@ Türkiye'deki İnternet Servis Sağlayıcı (İSS) ağlarında uygulanan Derin P
 
 ### 1. İndirme
 Resmi [Sürümler (Releases)](https://github.com/egecagintepe/ZonDPI/releases/latest) sayfasından en son doğrulanmış sürümü indirin:
-* **Kurulum Dosyası**: `ZonDPI-1.0.4-Setup.exe` (Önerilen)
-* **Taşınabilir Sürüm**: `ZonDPI-1.0.4-Windows-x64-portable.zip`
+* **Kurulum Dosyası**: `ZonDPI-1.0.5-Setup.exe` (Önerilen)
+* **Taşınabilir Sürüm**: `ZonDPI-1.0.5-Windows-x64-portable.zip`
 
 ### 2. Kurulum ve SmartScreen Uyarısı
-1. `ZonDPI-1.0.4-Setup.exe` dosyasını çalıştırın ve Windows UAC (Kullanıcı Hesabı Denetimi) onayını verin.
+1. `ZonDPI-1.0.5-Setup.exe` dosyasını çalıştırın ve Windows UAC (Kullanıcı Hesabı Denetimi) onayını verin.
 2. *Windows SmartScreen Uyarısı*: ZonDPI açık kaynaklı ve ücretsiz bir yazılım olduğu için pahalı ticari kod imzalama sertifikalarına sahip değildir. Windows SmartScreen bilinmeyen yayımcı uyarısı verirse: **"Ek bilgi"** -> **"Yine de çalıştır"** butonuna tıklayın. İndirdiğiniz dosyanın bütünlüğünü [SHA256SUMS.txt](https://github.com/egecagintepe/ZonDPI/releases/latest) dosyasındaki resmi hash ile doğrulayabilirsiniz.
 
 ### 3. Kullanım
@@ -94,12 +94,12 @@ Yayınlanan her sürüm `SHA256SUMS.txt` dosyasında doğrulanabilir özetler su
 
 ```powershell
 # İndirilen kurulum dosyasının bütünlüğünü doğrulayın
-Get-FileHash .\ZonDPI-1.0.4-Setup.exe -Algorithm SHA256
+Get-FileHash .\ZonDPI-1.0.5-Setup.exe -Algorithm SHA256
 ```
 
-v1.0.4 sürümü için beklenen özetler:
-* `ZonDPI-1.0.4-Setup.exe`: `A3A537298792B0507EE5C854BC301C35B77533F5932511AB70C633BD2C186FD2`
-* `ZonDPI-1.0.4-Windows-x64-portable.zip`: `55A90FCFB485D93B4938679A4AF03E3658328EAB2BB495C72B98BBF51C685036`
+v1.0.5 sürümü için beklenen özetler:
+* `ZonDPI-1.0.5-Setup.exe`: `364F79436F642CC527DFAE75D42976630C8F435A342E32BE7391F37F31FC115E`
+* `ZonDPI-1.0.5-Windows-x64-portable.zip`: `E8DBE54AB16D221D4B35BD9424B6C0C94F35D99BB80B0E2DB75AC34D2F6F80B2`
 
 ---
 

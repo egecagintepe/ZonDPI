@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows_10_%2F_11_x64-0078D6.svg)](docs/COMPATIBILITY.md)
-[![Release](https://img.shields.io/badge/Release-v1.0.4-success.svg)](https://github.com/egecagintepe/ZonDPI/releases/latest)
+[![Release](https://img.shields.io/badge/Release-v1.0.5-success.svg)](https://github.com/egecagintepe/ZonDPI/releases/latest)
 [![CI](https://github.com/egecagintepe/ZonDPI/actions/workflows/ci.yml/badge.svg)](https://github.com/egecagintepe/ZonDPI/actions/workflows/ci.yml)
 [![Zero Telemetry](https://img.shields.io/badge/Telemetry-Zero-brightgreen.svg)](docs/PRIVACY.md)
 
@@ -55,11 +55,11 @@ Open-source Windows system utility engineered to mitigate Deep Packet Inspection
 
 ### 1. Download
 Download the latest verified release from the [Releases](https://github.com/egecagintepe/ZonDPI/releases/latest) page:
-* **Installer**: `ZonDPI-1.0.4-Setup.exe` (Recommended)
-* **Portable**: `ZonDPI-1.0.4-Windows-x64-portable.zip`
+* **Installer**: `ZonDPI-1.0.5-Setup.exe` (Recommended)
+* **Portable**: `ZonDPI-1.0.5-Windows-x64-portable.zip`
 
 ### 2. Installation & SmartScreen Notice
-1. Run `ZonDPI-1.0.4-Setup.exe` and accept the Windows UAC elevation prompt.
+1. Run `ZonDPI-1.0.5-Setup.exe` and accept the Windows UAC elevation prompt.
 2. *Note on Windows SmartScreen*: Because ZonDPI is a free open-source project without an expensive commercial code-signing certificate, Windows SmartScreen may display an unrecognized app alert. Click **"More info"** and **"Run anyway"**. You can independently verify the cryptographic SHA-256 checksum of your downloaded binary against the published [SHA256SUMS.txt](https://github.com/egecagintepe/ZonDPI/releases/latest).
 
 ### 3. Usage
@@ -94,12 +94,12 @@ Every release publishes verifiable SHA-256 hashes in `SHA256SUMS.txt`:
 
 ```powershell
 # Verify downloaded installer integrity
-Get-FileHash .\ZonDPI-1.0.4-Setup.exe -Algorithm SHA256
+Get-FileHash .\ZonDPI-1.0.5-Setup.exe -Algorithm SHA256
 ```
 
-Expected hash for v1.0.4:
-* `ZonDPI-1.0.4-Setup.exe`: `A3A537298792B0507EE5C854BC301C35B77533F5932511AB70C633BD2C186FD2`
-* `ZonDPI-1.0.4-Windows-x64-portable.zip`: `55A90FCFB485D93B4938679A4AF03E3658328EAB2BB495C72B98BBF51C685036`
+Expected hash for v1.0.5:
+* `ZonDPI-1.0.5-Setup.exe`: `364F79436F642CC527DFAE75D42976630C8F435A342E32BE7391F37F31FC115E`
+* `ZonDPI-1.0.5-Windows-x64-portable.zip`: `E8DBE54AB16D221D4B35BD9424B6C0C94F35D99BB80B0E2DB75AC34D2F6F80B2`
 
 ---
 
