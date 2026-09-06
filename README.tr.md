@@ -22,7 +22,7 @@ Türkiye'deki İnternet Servis Sağlayıcı (İSS) ağlarında uygulanan Derin P
 * **Türkiye İSS Ağlarında Fiziksel Olarak Doğrulandı**: Varsayılan profiller Türk Telekom ve Turkcell Superonline fiber/VDSL hatlarında bizzat test edilip doğrulanmış; Discord web ve masaüstü uygulamasının ping kaybı olmaksızın çalışmasını sağlamıştır.
 * **Çift Çalışma Modu**:
   * **Sistem Paket Filtresi (Varsayılan)**: İmzalı WinDivert sürücüsü üzerinden çekirdek düzeyinde şeffaf TCP segmentasyonu ve auto-TTL atlama tekniği uygular. Ek proxy ayarı gerektirmeden tüm tarayıcılar, oyunlar ve masaüstü uygulamalarında sistem genelinde çalışır.
-  * **Antivirüs Uyumluluk Modu**: Kaspersky, Bitdefender veya ESET gibi derin paket taraması yapan antivirüs yazılımlarıyla çakışmaları önlemek için tasarlanmış yerel loopback proxy modu.
+  * **Antivirüs Uyumluluk Modu**: Kaspersky (Uyumluluk düzeltmesi uygulandı, doğrulama bekleniyor), Bitdefender veya ESET gibi derin paket taraması yapan antivirüs yazılımlarıyla çakışmaları önlemek için tasarlanmış bağdaştırıcı DNS uyumluluk ve yerel proxy modu.
 * **Windows Arka Plan Hizmeti Mimarisi**: Kullanıcı arayüzü, Windows Hizmet Denetim Yöneticisi (SCM) altında çalışan ayrıcalıklı bir Windows Hizmetine (`zondpi-service.exe`) bağlanır. Çökme durumunda otomatik yeniden başlatma ve temiz kapanma güvencesi sunar.
 * **DNS Zehirlenmesi Koruması & Otomatik Geri Alma**: Ağ bağdaştırıcılarını standart portlar üzerinden Cloudflare 1.1.1.1 DNS ile korur. Hizmet kapandığında veya sistem yeniden başladığında bağdaştırıcı DNS ayarlarını otomatik olarak önceki orijinal durumuna geri döndürür.
 * **Sıfır Telemetri & Mutlak Gizlilik**: Hiçbir kullanıcı verisi, tarama geçmişi, çökme kaydı toplanmaz; ZonDPI sunucularına herhangi bir veri iletimi yapılmaz.

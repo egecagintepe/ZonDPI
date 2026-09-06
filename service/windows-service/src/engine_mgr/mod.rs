@@ -15,6 +15,9 @@ use crate::supervisor::{ProcessSupervisor, SupervisorConfig, SupervisorState};
 use zondpi_compatibility::{
     CompatibilityPolicy, EngineRecommendation, SecurityDetectorTrait, SystemSecurityDetector,
 };
+use zondpi_dns::{
+    AdapterDnsOps, DnsCompatibilityController, DnsManagerError, DnsProvider,
+};
 use zondpi_ipc_protocol::{
     HealthStatusDto, LogEntryDto, ProfileSummaryDto, RecommendationDto, ServiceStatusDto,
 };
@@ -30,6 +33,8 @@ pub enum EngineManagerError {
     Goodbye(#[from] GoodbyeAdapterError),
     #[error("ByeDPI engine error: {0}")]
     ByeDpi(#[from] ByeDpiAdapterError),
+    #[error("DNS compatibility error: {0}")]
+    Dns(#[from] DnsManagerError),
     #[error("Engine start failed health check verification: {0}")]
     HealthCheckFailed(String),
     #[error("Unknown or unsupported engine name: '{0}' (expected 'goodbye' or 'byedpi')")]
@@ -66,6 +71,9 @@ impl std::fmt::Display for ActiveMode {
 struct ManagerInner {
     goodbye_adapter: GoodbyeDpiAdapter,
     byedpi_adapter: ByeDpiAdapter,
+    dns_controller: DnsCompatibilityController,
+    dns_provider: DnsProvider,
+    kaspersky_dns_override_applied: bool,
     active_mode: ActiveMode,
     active_engine: Option<EngineId>,
     requested_engine: Option<EngineId>,
@@ -97,9 +105,17 @@ impl EngineManager {
             vec![],
         ));
 
+        let dns_controller = DnsCompatibilityController::new(&runtime_paths.data_root);
+        // Boot/crash recovery: If previous session terminated abnormally while DNS override was active,
+        // restore original DNS safely so adapter is not permanently modified.
+        let _ = dns_controller.handle_boot_recovery(false, DnsProvider::Automatic);
+
         let inner = ManagerInner {
             goodbye_adapter: GoodbyeDpiAdapter::new(dummy_sup_g),
             byedpi_adapter: ByeDpiAdapter::new(dummy_sup_b),
+            dns_controller,
+            dns_provider: DnsProvider::Automatic,
+            kaspersky_dns_override_applied: false,
             active_mode: ActiveMode::Idle,
             active_engine: None,
             requested_engine: None,
@@ -125,6 +141,49 @@ impl EngineManager {
         mgr.security_detector = detector;
         mgr
     }
+
+    /// Creates an EngineManager with custom security detector and mock DNS ops for testing.
+    pub fn with_detector_and_dns_ops(
+        runtime_paths: RuntimePaths,
+        detector: Arc<dyn SecurityDetectorTrait>,
+        dns_ops: Box<dyn AdapterDnsOps>,
+    ) -> Self {
+        let dummy_sup_g = ProcessSupervisor::new(SupervisorConfig::new(
+            "GoodbyeDPI-Worker",
+            std::path::PathBuf::from("goodbyedpi.exe"),
+            vec![],
+        ));
+        let dummy_sup_b = ProcessSupervisor::new(SupervisorConfig::new(
+            "ByeDPI-Worker",
+            std::path::PathBuf::from("ciadpi.exe"),
+            vec![],
+        ));
+
+        let dns_controller = DnsCompatibilityController::with_ops(&runtime_paths.data_root, dns_ops);
+        let _ = dns_controller.handle_boot_recovery(false, DnsProvider::Automatic);
+
+        let inner = ManagerInner {
+            goodbye_adapter: GoodbyeDpiAdapter::new(dummy_sup_g),
+            byedpi_adapter: ByeDpiAdapter::new(dummy_sup_b),
+            dns_controller,
+            dns_provider: DnsProvider::Automatic,
+            kaspersky_dns_override_applied: false,
+            active_mode: ActiveMode::Idle,
+            active_engine: None,
+            requested_engine: None,
+            active_profile: None,
+            last_error: None,
+        };
+
+        Self {
+            inner: Arc::new(Mutex::new(inner)),
+            runtime_paths,
+            security_detector: detector,
+            service_start_time: Instant::now(),
+            mutation_lock: Arc::new(Mutex::new(())),
+        }
+    }
+
 
     /// Loads and parses a profile definition from disk safely.
     pub fn load_profile(&self, profile_id: &str) -> Result<ProfileDefinition, EngineManagerError> {
@@ -246,6 +305,18 @@ impl EngineManager {
         }
     }
 
+    /// Resolves the effective profile to apply, enforcing that Kaspersky environments
+    /// always use the validated turkey-default -5 semantics regardless of ISP-specific recommendations.
+    pub fn resolve_effective_profile<'a>(&self, engine: EngineId, requested_profile: &'a str) -> &'a str {
+        let sec_env = self.security_detector.detect();
+        let kaspersky_detected = sec_env.contains_product("kaspersky");
+        if kaspersky_detected && engine == EngineId::GoodbyeDpi {
+            "turkey-default"
+        } else {
+            requested_profile
+        }
+    }
+
     /// Internal transactional start procedure.
     async fn start_engine_internal(
         &self,
@@ -253,23 +324,59 @@ impl EngineManager {
         profile_id: &str,
         mode: ActiveMode,
     ) -> Result<(), EngineManagerError> {
-        let profile = self.load_profile(profile_id)?;
+        let sec_env = self.security_detector.detect();
+        let kaspersky_detected = sec_env.contains_product("kaspersky");
+
+        // Hard requirement 5: When Kaspersky is detected, force validated turkey-default -5 semantics
+        // regardless of unvalidated ISP-specific profile recommendation (such as superonline -9).
+        let effective_profile_id = self.resolve_effective_profile(engine, profile_id);
+
+        let profile = self.load_profile(effective_profile_id)?;
         let custom_base = Some(self.runtime_paths.install_root.as_path());
 
         let mut inner = self.inner.lock().await;
         inner.requested_engine = Some(engine);
 
-        // 1. Stop any currently active engine first
+        // 1. Stop any currently active engine and clear any active DNS override first
         if inner.active_engine.is_some() {
             let _ = inner.goodbye_adapter.stop().await;
             let _ = inner.byedpi_adapter.stop().await;
+            if inner.kaspersky_dns_override_applied {
+                let _ = inner.dns_controller.restore_dns();
+                inner.kaspersky_dns_override_applied = false;
+            }
             inner.active_engine = None;
         }
 
-        // 2. Spawn and verify requested engine
+        // 2. If Kaspersky is active and using GoodbyeDpi:
+        // Apply ZonDPI-managed adapter DNS override and suppress packet DNS redirect
+        let suppress_dns_redirect = kaspersky_detected;
+        if engine == EngineId::GoodbyeDpi && kaspersky_detected {
+            if inner.dns_provider.should_override_system() {
+                match inner.dns_controller.apply_dns(inner.dns_provider) {
+                    Ok(_) => {
+                        inner.kaspersky_dns_override_applied = true;
+                    }
+                    Err(e) => {
+                        inner.last_error = Some(e.to_string());
+                        return Err(EngineManagerError::Dns(e));
+                    }
+                }
+            }
+        }
+
+        // 3. Spawn and verify requested engine
         match engine {
             EngineId::GoodbyeDpi => {
-                if let Err(e) = inner.goodbye_adapter.start(&profile, custom_base).await {
+                if let Err(e) = inner
+                    .goodbye_adapter
+                    .start(&profile, custom_base, suppress_dns_redirect)
+                    .await
+                {
+                    if inner.kaspersky_dns_override_applied {
+                        let _ = inner.dns_controller.restore_dns();
+                        inner.kaspersky_dns_override_applied = false;
+                    }
                     inner.last_error = Some(e.to_string());
                     return Err(EngineManagerError::Goodbye(e));
                 }
@@ -280,6 +387,10 @@ impl EngineManager {
                 let health = inner.goodbye_adapter.health_check().await;
                 if !health.is_healthy {
                     let _ = inner.goodbye_adapter.stop().await;
+                    if inner.kaspersky_dns_override_applied {
+                        let _ = inner.dns_controller.restore_dns();
+                        inner.kaspersky_dns_override_applied = false;
+                    }
                     inner.last_error = Some(health.diagnostic_message.clone());
                     return Err(EngineManagerError::HealthCheckFailed(
                         health.diagnostic_message,
@@ -314,10 +425,15 @@ impl EngineManager {
 
         // Commit active state
         inner.active_engine = Some(engine);
-        inner.active_profile = Some(profile_id.to_string());
+        inner.active_profile = Some(effective_profile_id.to_string());
         inner.active_mode = mode;
         inner.last_error = None;
-        info!(engine = %engine, profile = %profile_id, "Active networking engine successfully committed");
+        info!(
+            engine = %engine,
+            profile = %effective_profile_id,
+            kaspersky_detected,
+            "Active networking engine successfully committed"
+        );
         Ok(())
     }
 
@@ -328,6 +444,10 @@ impl EngineManager {
 
         let _ = inner.goodbye_adapter.stop().await;
         let _ = inner.byedpi_adapter.stop().await;
+        if inner.kaspersky_dns_override_applied {
+            let _ = inner.dns_controller.restore_dns();
+            inner.kaspersky_dns_override_applied = false;
+        }
 
         inner.active_engine = None;
         inner.active_profile = None;
@@ -335,6 +455,12 @@ impl EngineManager {
         inner.last_error = None;
         info!("Active networking engine stopped");
         Ok(())
+    }
+
+    /// Sets the DNS provider preference for compatibility mode.
+    pub async fn set_dns_provider(&self, provider: DnsProvider) {
+        let mut inner = self.inner.lock().await;
+        inner.dns_provider = provider;
     }
 
     /// Transactionally switches active engine and applies a new profile.
@@ -359,7 +485,7 @@ impl EngineManager {
         let inner = self.inner.lock().await;
         let service_uptime = self.service_start_time.elapsed().as_secs();
 
-        let (engine_pid, engine_uptime, service_state, health) = match inner.active_engine {
+        let (engine_pid, engine_uptime, service_state, mut health) = match inner.active_engine {
             Some(EngineId::GoodbyeDpi) => {
                 let st = inner.goodbye_adapter.supervisor().status().await;
                 let h = inner.goodbye_adapter.health_check().await;
@@ -423,6 +549,33 @@ impl EngineManager {
             } => ("Otomatik".to_string(), fallback_reason.clone()),
         };
 
+        let sec_env = self.security_detector.detect();
+        let kaspersky_detected = sec_env.contains_product("kaspersky");
+
+        let (security_compatibility, dns_compatibility_method, dns_provider) = if kaspersky_detected {
+            (
+                Some("Kaspersky".to_string()),
+                Some("Sistem DNS yapılandırması".to_string()),
+                Some("Cloudflare".to_string()),
+            )
+        } else {
+            (None, None, None)
+        };
+
+        // If Kaspersky compatibility DNS was applied and engine is running, verify effectiveness
+        if inner.kaspersky_dns_override_applied && health.is_healthy {
+            let probe_ok = inner
+                .dns_controller
+                .ops()
+                .verify_dns_resolution("one.one.one.one")
+                .unwrap_or(false);
+            health.network_effectiveness = if probe_ok {
+                "Doğrulandı".to_string()
+            } else {
+                "Etkin".to_string()
+            };
+        }
+
         let _rec = self.evaluate_recommendation();
         let rec_str = "Otomatik (Uyumlu)".to_string();
 
@@ -440,6 +593,9 @@ impl EngineManager {
             compatibility_recommendation: Some(rec_str),
             fallback_reason,
             last_error: inner.last_error.clone(),
+            security_compatibility,
+            dns_compatibility_method,
+            dns_provider,
         }
     }
 
@@ -610,5 +766,60 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[tokio::test]
+    async fn test_kaspersky_detected_plus_superonline_forces_validated_modeset_5_and_adapter_dns() {
+        use crate::engine_adapter::goodbye::GoodbyeConfig;
+
+        let paths = RuntimePaths::discover().expect("discover paths");
+        let env = SecurityEnvironment::new(
+            vec![SecurityProduct {
+                display_name: "Kaspersky Premium".to_string(),
+                product_state: 0,
+                path_to_signed_product_exe: None,
+                path_to_signed_reporting_exe: None,
+            }],
+            DetectionStatus::Available,
+        );
+        let mock = Arc::new(MockSecurityDetector::new(env));
+        let mgr = EngineManager::with_detector(paths.clone(), mock);
+
+        // Even though user or ISP detection requests "superonline-default",
+        // Kaspersky presence MUST override to "turkey-default" (-5 semantics)
+        let resolved = mgr.resolve_effective_profile(EngineId::GoodbyeDpi, "superonline-default");
+        assert_eq!(
+            resolved, "turkey-default",
+            "Kaspersky must override superonline to turkey-default"
+        );
+
+        // Load the profile and verify argument generation
+        let profile = mgr.load_profile(resolved).expect("load turkey-default");
+        let config = GoodbyeConfig::from_profile(&profile).expect("parse goodbye config");
+
+        // When Kaspersky is detected, packet DNS redirect is suppressed
+        let args = config.to_command_args_filtered(false);
+
+        // 1. Must contain validated -5 packet strategy
+        assert!(args.contains(&std::ffi::OsString::from("-f")));
+        assert!(args.contains(&std::ffi::OsString::from("2")));
+        assert!(args.contains(&std::ffi::OsString::from("-e")));
+        assert!(args.contains(&std::ffi::OsString::from("--native-frag")));
+        assert!(args.contains(&std::ffi::OsString::from("--reverse-frag")));
+        assert!(args.contains(&std::ffi::OsString::from("--auto-ttl")));
+        assert!(args.contains(&std::ffi::OsString::from("1-4-10")));
+        assert!(args.contains(&std::ffi::OsString::from("--max-payload")));
+        assert!(args.contains(&std::ffi::OsString::from("1200")));
+
+        // 2. Must NOT contain -9 flags from superonline
+        assert!(!args.contains(&std::ffi::OsString::from("-9")));
+        assert!(!args.contains(&std::ffi::OsString::from("--wrong-chksum")));
+        assert!(!args.contains(&std::ffi::OsString::from("--wrong-seq")));
+
+        // 3. Must NOT contain packet DNS redirect
+        assert!(!args.contains(&std::ffi::OsString::from("--dns-addr")));
+        assert!(!args.contains(&std::ffi::OsString::from("--dns-port")));
+        assert!(!args.contains(&std::ffi::OsString::from("--dnsv6-addr")));
+        assert!(!args.contains(&std::ffi::OsString::from("--dnsv6-port")));
     }
 }

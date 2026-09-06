@@ -202,7 +202,14 @@ pub struct ServiceStatusDto {
     pub compatibility_recommendation: Option<String>,
     pub fallback_reason: Option<String>,
     pub last_error: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub security_compatibility: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dns_compatibility_method: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dns_provider: Option<String>,
 }
+
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ProfileSummaryDto {

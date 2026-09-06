@@ -116,6 +116,13 @@ pub fn uninstall_service() -> Result<(), ServiceManagementError> {
     info!("Deleting service '{}' from SCM", SERVICE_NAME);
     service.delete()?;
     info!("Service '{}' deleted successfully", SERVICE_NAME);
+
+    // Ensure any active adapter DNS override is completely restored on uninstall
+    if let Ok(paths) = crate::runtime_paths::RuntimePaths::discover() {
+        let dns_ctrl = zondpi_dns::DnsCompatibilityController::new(&paths.data_root);
+        let _ = dns_ctrl.restore_dns();
+    }
+
     Ok(())
 }
 

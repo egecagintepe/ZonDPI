@@ -278,6 +278,11 @@ impl IpcServer {
                 format!("ByeDPI worker error: {}", b),
                 None,
             ),
+            EngineManagerError::Dns(d) => (
+                IpcErrorCode::InternalError,
+                format!("DNS compatibility error: {}", d),
+                None,
+            ),
             EngineManagerError::AutoModeFailed(a) => (
                 IpcErrorCode::EngineStartFailed,
                 format!("Auto mode selection failed: {}", a),

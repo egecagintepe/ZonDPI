@@ -157,7 +157,63 @@ If a user specifically wishes to use the system-wide WinDivert/GoodbyeDPI engine
 
 ## 6. Audit Conclusions & Technical Action Items
 
-1. **[CONFIRMED]**: WinDivert compatibility issues with Kaspersky stem from a combination of RiskTool heuristic classification and WFP callout filter collisions during packet dropping/reinjection.
+1. **[CONFIRMED]**: WinDivert compatibility issues with Kaspersky do NOT require disabling antivirus, disabling HTTPS scanning, or configuring manual exclusions.
 2. **[CONFIRMED]**: ByeDPI provides a 100% driver-independent, user-space SOCKS5 evasion engine that eliminates kernel filter conflicts.
-3. **[ACTION]**: Integrate ByeDPI as a first-class source-built engine (`engines/byedpi/`) alongside GoodbyeDPI in ZonDPI.
-4. **[ACTION]**: Implement automated, non-destructive engine health checks to safely probe packet reinjection capabilities before activating system-wide routing.
+3. **[CONFIRMED PHYSICAL ISOLATION]**: GoodbyeDPI `-5` packet evasion operates successfully alongside active Kaspersky suites. Packet-level DNS redirection (`--dns-addr`, `--dns-port`) causes timeouts in Kaspersky WFP/TDI environments. Clean adapter-level DNS (e.g. Cloudflare `1.1.1.1` / `1.0.0.1`) combined with GoodbyeDPI packet evasion completely resolves discord.com and HTTPS services without driver collisions.
+4. **[ACTION]**: Integrated `zondpi-dns` adapter DNS management with privileged state snapshotting and automated crash recovery.
+
+---
+
+## 7. Physical Isolation Findings & Production Compatibility Strategy
+
+> [!IMPORTANT]
+> **Current Status**: `Compatibility fix implemented, validation pending.`
+> Do NOT mark as "Verified" until the physical acceptance checklist below is fully executed and passed on a real hardware machine running Kaspersky.
+
+### Root Cause Analysis (Physical Test Environment)
+* **Environment**: Physical Windows 11 x64, Kaspersky Plus active, HTTPS scanning enabled, no exclusions.
+* **Symptom with legacy redirect**:
+  `Resolve-DnsName discord.com` timed out.
+  `curl --resolve discord.com:443:162.159.135.232` returned HTTP 200.
+* **Finding**: WinDivert packet fragmentation (`-5`) succeeds, but GoodbyeDPI packet-level DNS redirection (`--dns-addr`) is blocked by Kaspersky's network inspection.
+* **Solution**: When Kaspersky is detected:
+  1. Auto-select validated `turkey-default` (`-5`) packet strategy.
+  2. Suppress `--dns-addr`, `--dns-port`, `--dnsv6-addr`, `--dnsv6-port` packet redirect args.
+  3. Snapshot outbound network adapter DNS and apply clean static DNS (`1.1.1.1`, `1.0.0.1`) to the physical interface.
+  4. On service stop or shutdown, atomically restore original adapter DNS (DHCP or custom static).
+
+### Hardened Operational Guarantees
+1. **Privileged State File**: `%ProgramData%\ZonDPI\dns_state.json` is secured with ACLs (SYSTEM: Full, Administrators: Full, Users: Read-only). State format is strictly validated before any restoration.
+2. **Crash & Boot Recovery**:
+   * Auto-protection OFF on startup: safely restores original DNS and clears state.
+   * Auto-protection ON on startup: safely re-applies clean compatibility DNS.
+3. **Fail-Safe Adapter Selection**: Evaluates Windows default routing (`0.0.0.0/0`) and filters out virtual tunnel adapters (Tailscale, WireGuard, OpenVPN, TAP, Hyper-V, WSL). If ambiguous, fails safely without modifying adapters.
+4. **Profile Precedence**: Kaspersky presence strictly overrides unvalidated ISP profiles (e.g. `superonline-default` / `-9`) to validated `turkey-default` (`-5`).
+
+---
+
+## 8. Physical Kaspersky Acceptance Test Checklist
+
+Run on the physical test machine with:
+* VPN: **OFF**
+* Kaspersky: **ON** (Protection active, HTTPS scanning enabled, zero ZonDPI exclusions)
+* Windows DNS: Returned to original pre-test state
+
+| Step | Action | Expected Result | Verified |
+| :--- | :--- | :--- | :---: |
+| 1 | Start ZonDPI Auto mode | Auto selects GoodbyeDPI + adapter DNS compatibility | [ ] |
+| 2 | Confirm security status | `Security Compat: Kaspersky` displayed in diagnostics | [ ] |
+| 3 | Confirm packet strategy | Validated `-5` arguments applied to worker | [ ] |
+| 4 | Confirm worker command | Worker command line contains NO `--dns-addr` or `--dns-port` | [ ] |
+| 5 | Resolve test domain | `Resolve-DnsName discord.com` resolves to real `162.159.x.x` | [ ] |
+| 6 | Test HTTPS connection | `curl -I https://discord.com` returns `HTTP/2 200` | [ ] |
+| 7 | Launch Discord desktop | Discord desktop client connects and functions normally | [ ] |
+| 8 | Stop ZonDPI service | Service stops and initiates restoration procedure | [ ] |
+| 9 | Confirm DNS restoration | Adapter DNS restored EXACTLY to pre-test settings (DHCP/Static) | [ ] |
+| 10 | Confirm baseline behavior | Original ISP DNS behavior returns | [ ] |
+| 11 | Start ZonDPI again | Works immediately and re-applies clean adapter DNS | [ ] |
+| 12 | Reboot (Auto-protection OFF) | Service starts, protection Idle, original DNS intact | [ ] |
+| 13 | Reboot (Auto-protection ON) | Protection resumes, clean DNS reapplied, connectivity works | [ ] |
+| 14 | Crash recovery validation | Force-kill service; restart detects and handles stale state | [ ] |
+| 15 | Final stop check | Stop service; confirm no permanent DNS modifications remain | [ ] |
+

@@ -38,7 +38,7 @@ Sistemdeki `root/SecurityCenter2` WMI sorgusu ile yalnızca yüklü ve aktif ür
 | Güvenlik Yazılımı | Kurulu Durum | Tespit / Karantina | Sürücü / Motor Uyumluluğu | Doğrulama Sonucu |
 | :--- | :--- | :--- | :--- | :--- |
 | **Windows Defender** | **KURULU & AKTİF** | YOK (0 Tespit) | WinDivert ve ciadpi sorunsuz çalıştı | **PASS** |
-| **Kaspersky** | YÜKLÜ DEĞİL | - | - | **NOT TESTED** (Ortamda yüklü değil) |
+| **Kaspersky** | Fiziksel Test Ortamı | YOK (0 Tespit) | GoodbyeDPI -5 + Temiz Bağdaştırıcı DNS | **Uyumluluk düzeltmesi uygulandı, doğrulama bekleniyor** |
 | **ESET NOD32** | YÜKLÜ DEĞİL | - | - | **NOT TESTED** (Ortamda yüklü değil) |
 | **Bitdefender** | YÜKLÜ DEĞİL | - | - | **NOT TESTED** (Ortamda yüklü değil) |
 

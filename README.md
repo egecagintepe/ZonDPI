@@ -22,7 +22,7 @@ Open-source Windows system utility engineered to mitigate Deep Packet Inspection
 * **Real-World Validated on Turkish ISPs**: Default profiles are physically tested and proven on production Turkish ISP infrastructure (Türk Telekom, Turkcell Superonline), restoring access to platforms such as Discord with native low ping.
 * **Dual Operation Modes**:
   * **System Packet Filter (Default)**: Kernel-level transparent TCP segmentation and auto-TTL hop evasion via signed WinDivert driver. Works system-wide across all browsers, games, and desktop applications without manual proxy configuration.
-  * **Antivirus Compatibility Mode**: Local loopback proxy designed to eliminate packet inspection conflicts on machines running security suites like Kaspersky, Bitdefender, or ESET.
+  * **Antivirus Compatibility Mode**: Adapter DNS compatibility and local proxy engine designed to eliminate packet inspection conflicts on machines running security suites like Kaspersky (Compatibility fix implemented, validation pending), Bitdefender, or ESET.
 * **Windows Background Service Architecture**: Unprivileged desktop GUI connects to a privileged Windows Service (`zondpi-service.exe`) running via Windows Service Control Manager (SCM), providing automatic crash recovery and clean startup handling.
 * **DNS Poisoning Mitigation & Auto-Rollback**: Protects network adapters against DNS poisoning via Cloudflare 1.1.1.1 DNS over standard ports, automatically taking snapshots and rolling back adapter DNS on service shutdown.
 * **Zero Telemetry & Absolute Privacy**: No analytics, no metrics collection, no crash reporting, and no outbound network calls to ZonDPI servers.

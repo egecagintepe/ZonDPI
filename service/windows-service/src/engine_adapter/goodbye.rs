@@ -250,6 +250,11 @@ impl GoodbyeConfig {
 
     /// Converts typed configuration to safe command line arguments.
     pub fn to_command_args(&self) -> Vec<OsString> {
+        self.to_command_args_filtered(true)
+    }
+
+    /// Converts typed configuration to safe command line arguments with optional DNS redirect inclusion.
+    pub fn to_command_args_filtered(&self, include_dns_redirect: bool) -> Vec<OsString> {
         let mut args = Vec::new();
 
         if self.block_passive_dpi {
@@ -303,21 +308,23 @@ impl GoodbyeConfig {
             args.push(OsString::from("--max-payload"));
             args.push(OsString::from(payload.to_string()));
         }
-        if let Some(ref addr) = self.dns_addr {
-            args.push(OsString::from("--dns-addr"));
-            args.push(OsString::from(addr));
-        }
-        if let Some(port) = self.dns_port {
-            args.push(OsString::from("--dns-port"));
-            args.push(OsString::from(port.to_string()));
-        }
-        if let Some(ref addr) = self.dnsv6_addr {
-            args.push(OsString::from("--dnsv6-addr"));
-            args.push(OsString::from(addr));
-        }
-        if let Some(port) = self.dnsv6_port {
-            args.push(OsString::from("--dnsv6-port"));
-            args.push(OsString::from(port.to_string()));
+        if include_dns_redirect {
+            if let Some(ref addr) = self.dns_addr {
+                args.push(OsString::from("--dns-addr"));
+                args.push(OsString::from(addr));
+            }
+            if let Some(port) = self.dns_port {
+                args.push(OsString::from("--dns-port"));
+                args.push(OsString::from(port.to_string()));
+            }
+            if let Some(ref addr) = self.dnsv6_addr {
+                args.push(OsString::from("--dnsv6-addr"));
+                args.push(OsString::from(addr));
+            }
+            if let Some(port) = self.dnsv6_port {
+                args.push(OsString::from("--dnsv6-port"));
+                args.push(OsString::from(port.to_string()));
+            }
         }
         for custom in &self.custom_args {
             args.push(OsString::from(custom));
@@ -337,11 +344,12 @@ impl GoodbyeDpiAdapter {
         Self { supervisor }
     }
 
-    /// Spawns the GoodbyeDPI worker with the specified profile definition.
+    /// Spawns the GoodbyeDPI worker with the specified profile definition and optional DNS redirect suppression.
     pub async fn start(
         &mut self,
         profile: &ProfileDefinition,
         custom_base: Option<&Path>,
+        suppress_dns_redirect: bool,
     ) -> Result<(), GoodbyeAdapterError> {
         let exe_path = EngineBinaryResolver::resolve(EngineId::GoodbyeDpi, custom_base)
             .map_err(|e| GoodbyeAdapterError::BinaryNotFound(e.to_string()))?;
@@ -366,7 +374,7 @@ impl GoodbyeDpiAdapter {
         }
 
         let typed_config = GoodbyeConfig::from_profile(profile)?;
-        let args = typed_config.to_command_args();
+        let args = typed_config.to_command_args_filtered(!suppress_dns_redirect);
 
         let working_dir = exe_path.parent().map(|p| p.to_path_buf());
         let mut sup_config = SupervisorConfig::new("GoodbyeDPI-Worker", exe_path, args);
@@ -374,9 +382,14 @@ impl GoodbyeDpiAdapter {
 
         self.supervisor = ProcessSupervisor::new(sup_config);
         self.supervisor.spawn().await?;
-        info!(profile = %profile.id, "GoodbyeDPI worker process started");
+        info!(
+            profile = %profile.id,
+            suppress_dns_redirect,
+            "GoodbyeDPI worker process started"
+        );
         Ok(())
     }
+
 
     /// Stops the GoodbyeDPI worker gracefully.
     pub async fn stop(&mut self) -> Result<(), GoodbyeAdapterError> {
@@ -692,4 +705,74 @@ mod tests {
             "Must NOT contain Yandex port 1253"
         );
     }
+
+    #[test]
+    fn test_kaspersky_detected_suppresses_dns_redirect_args() {
+        let profile = ProfileDefinition {
+            id: "turkey-default".to_string(),
+            name: "Türk Telekom".to_string(),
+            description: "Default".to_string(),
+            target_engine: "goodbye".to_string(),
+            arguments: vec![
+                "-5".to_string(),
+                "--dns-addr".to_string(),
+                "1.1.1.1".to_string(),
+                "--dns-port".to_string(),
+                "53".to_string(),
+                "--dnsv6-addr".to_string(),
+                "2606:4700:4700::1111".to_string(),
+                "--dnsv6-port".to_string(),
+                "53".to_string(),
+            ],
+        };
+
+        let config = GoodbyeConfig::from_profile(&profile).expect("parse");
+        // When Kaspersky is detected: include_dns_redirect = false
+        let filtered_args = config.to_command_args_filtered(false);
+
+        // Verify all DNS redirect arguments are strictly suppressed
+        assert!(!filtered_args.contains(&OsString::from("--dns-addr")));
+        assert!(!filtered_args.contains(&OsString::from("1.1.1.1")));
+        assert!(!filtered_args.contains(&OsString::from("--dns-port")));
+        assert!(!filtered_args.contains(&OsString::from("--dnsv6-addr")));
+        assert!(!filtered_args.contains(&OsString::from("2606:4700:4700::1111")));
+        assert!(!filtered_args.contains(&OsString::from("--dnsv6-port")));
+    }
+
+    #[test]
+    fn test_kaspersky_detected_preserves_modeset_5_packet_args() {
+        let profile = ProfileDefinition {
+            id: "turkey-default".to_string(),
+            name: "Türk Telekom".to_string(),
+            description: "Default".to_string(),
+            target_engine: "goodbye".to_string(),
+            arguments: vec![
+                "-5".to_string(),
+                "--dns-addr".to_string(),
+                "1.1.1.1".to_string(),
+                "--dns-port".to_string(),
+                "53".to_string(),
+            ],
+        };
+
+        let config = GoodbyeConfig::from_profile(&profile).expect("parse");
+        let filtered_args = config.to_command_args_filtered(false);
+
+        // Validated -5 packet evasion semantics must be completely preserved
+        assert!(filtered_args.contains(&OsString::from("-f")));
+        assert!(filtered_args.contains(&OsString::from("2")));
+        assert!(filtered_args.contains(&OsString::from("-e")));
+        assert!(filtered_args.contains(&OsString::from("--native-frag")));
+        assert!(filtered_args.contains(&OsString::from("--reverse-frag")));
+        assert!(filtered_args.contains(&OsString::from("--auto-ttl")));
+        assert!(filtered_args.contains(&OsString::from("1-4-10")));
+        assert!(filtered_args.contains(&OsString::from("--max-payload")));
+        assert!(filtered_args.contains(&OsString::from("1200")));
+
+        // Negative check: no -9 flags
+        assert!(!filtered_args.contains(&OsString::from("--wrong-seq")));
+        assert!(!filtered_args.contains(&OsString::from("--wrong-chksum")));
+        assert!(!filtered_args.contains(&OsString::from("-q")));
+    }
 }
+

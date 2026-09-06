@@ -646,6 +646,15 @@ pub fn render_status(status: &ServiceStatusDto, technical: bool) -> String {
         if let Some(rec) = &status.compatibility_recommendation {
             out.push_str(&format!("  Compatibility Rec:   {}\n", rec));
         }
+        if let Some(sec) = &status.security_compatibility {
+            out.push_str(&format!("  Security Compat:     {}\n", sec));
+        }
+        if let Some(dns_meth) = &status.dns_compatibility_method {
+            out.push_str(&format!("  DNS Compat Method:   {}\n", dns_meth));
+        }
+        if let Some(dns_prov) = &status.dns_provider {
+            out.push_str(&format!("  DNS Provider:        {}\n", dns_prov));
+        }
         if let Some(fallback) = &status.fallback_reason {
             out.push_str(&format!("  Fallback Reason:     {}\n", fallback));
         }
@@ -689,7 +698,11 @@ pub fn render_status(status: &ServiceStatusDto, technical: bool) -> String {
             "  Ağ Etkinliği:       {}\n",
             status.health.network_effectiveness
         ));
-        out.push_str("  Sistem Uyumluluğu:  Uyumlu\n");
+        if let Some(sec) = &status.security_compatibility {
+            out.push_str(&format!("  Güvenlik Uyumluluğu: {}\n", sec));
+        } else {
+            out.push_str("  Sistem Uyumluluğu:  Uyumlu\n");
+        }
         out.push_str("==================================================");
     }
     out
@@ -721,6 +734,9 @@ mod tests {
                 network_effectiveness: "Bilinmiyor".to_string(),
             },
             compatibility_recommendation: Some("Otomatik (Uyumlu)".to_string()),
+            security_compatibility: None,
+            dns_compatibility_method: None,
+            dns_provider: None,
             fallback_reason: None,
             last_error: None,
         };

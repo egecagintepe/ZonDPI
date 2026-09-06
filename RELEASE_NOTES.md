@@ -78,7 +78,7 @@ Türkiye'deki DPI (Derin Paket İnceleme) kaynaklı bağlantı engellemelerini v
 
 - **İmzasız Geliştirici Sürümü (Unsigned Build):** Bu sürüm resmi EV Authenticode sertifikası ile imzalanmamıştır. Windows SmartScreen açılışta uyarı gösterebilir.
 - **Fiziksel İSS Doğrulaması:** Türk Telekom ve Turkcell Superonline profilleri derleme ve şema testlerinden geçmiş olup, canlı fiziksel hat doğrulama durumu `NOT TESTED` olarak işaretlenmiştir.
-- **Kaspersky / ESET / Bitdefender:** Test makinesinde kurulu olmadığından bu antivirüsler altındaki canlı test durumu dürüstçe `NOT TESTED` olarak kayıt altına alınmıştır.
+- **Kaspersky:** Fiziksel test makinesinde bağdaştırıcı DNS uyumluluk düzeltmesi uygulandı (Doğrulama adımları devam ediyor; fiziksel kabul testi bekleniyor). ESET ve Bitdefender için test durumu `NOT TESTED` olarak korunmaktadır.
 
 ---
 
