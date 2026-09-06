@@ -84,139 +84,186 @@ pub fn install_service(custom_exe_path: Option<&Path>) -> Result<(), ServiceMana
     Ok(())
 }
 
-/// Stops the WinDivert kernel driver service if currently running in the Windows kernel.
-pub fn stop_windivert_driver_service() {
-    let sys_root = std::env::var("SystemRoot").unwrap_or_else(|_| "C:\\Windows".to_string());
-    let sys32 = std::path::PathBuf::from(&sys_root).join("System32");
+/// Determines whether the specified driver service binary path belongs to ZonDPI.
+fn is_zondpi_owned_driver_path(driver_path: &str) -> bool {
+    let lower_path = driver_path.to_lowercase();
+    // 1. Direct path check: contains zondpi
+    if lower_path.contains("zondpi") {
+        return true;
+    }
 
-    let driver_names = [
-        "windivert",
-        "windivert14",
-        "windivert22",
-        "WinDivert",
-        "WinDivert14",
-        "WinDivert22",
-    ];
-
-    if let Ok(manager) = ServiceManager::local_computer(None::<&str>, ServiceManagerAccess::CONNECT) {
-        for name in &driver_names {
-            if let Ok(driver_svc) = manager.open_service(
-                *name,
-                ServiceAccess::STOP | ServiceAccess::QUERY_STATUS,
-            ) {
-                if let Ok(status) = driver_svc.query_status() {
-                    if status.current_state != ServiceState::Stopped {
-                        info!(driver = %name, "Stopping WinDivert driver service via SCM");
-                        let _ = driver_svc.stop();
-                    }
-                }
+    // 2. Relative to current executable's directory
+    if let Ok(current_exe) = std::env::current_exe() {
+        if let Some(parent) = current_exe.parent() {
+            let parent_str = parent.to_string_lossy().to_lowercase();
+            if lower_path.contains(&parent_str) {
+                return true;
             }
         }
     }
 
-    let net_exe = sys32.join("net.exe");
-    if net_exe.is_file() {
-        for name in &["windivert", "windivert14", "windivert22"] {
-            let _ = std::process::Command::new(&net_exe)
-                .args(["stop", name, "/y"])
-                .output();
+    // 3. Under standard ProgramFiles\ZonDPI directory
+    if let Ok(prog_files) = std::env::var("ProgramFiles") {
+        let expected = format!("{}\\zondpi", prog_files.to_lowercase());
+        if lower_path.contains(&expected) {
+            return true;
         }
     }
+
+    false
 }
 
-/// Forcibly terminates any running engine workers and unloads/deletes the WinDivert kernel driver.
-/// This prevents error 1072 (ERROR_SERVICE_MARKED_FOR_DELETE) by ensuring all driver device handles
-/// are released before driver service deletion.
-pub fn cleanup_windivert_driver() -> Result<(), ServiceManagementError> {
-    let sys_root = std::env::var("SystemRoot").unwrap_or_else(|_| "C:\\Windows".to_string());
-    let sys32 = std::path::PathBuf::from(&sys_root).join("System32");
+/// Safely cleans up WinDivert driver services ONLY if owned by ZonDPI.
+/// Handles ERROR_SERVICE_MARKED_FOR_DELETE (1072) with bounded wait and honest reporting.
+/// NEVER executes global process termination (taskkill) or deletes external driver instances.
+pub fn cleanup_owned_windivert_driver() -> Result<(), ServiceManagementError> {
+    #[cfg(windows)]
+    {
+        use std::ptr::null;
+        use tracing::warn;
+        use windows_sys::Win32::Foundation::{
+            GetLastError, ERROR_SERVICE_DOES_NOT_EXIST, ERROR_SERVICE_MARKED_FOR_DELETE,
+        };
+        use windows_sys::Win32::System::Services::{
+            CloseServiceHandle, ControlService, DeleteService, OpenSCManagerW, OpenServiceW,
+            QueryServiceConfigW, QueryServiceStatus, QUERY_SERVICE_CONFIGW, SC_MANAGER_CONNECT,
+            SERVICE_CONTROL_STOP, SERVICE_QUERY_CONFIG, SERVICE_QUERY_STATUS, SERVICE_STATUS,
+            SERVICE_STOP,
+        };
 
-    // 1. Terminate all worker processes that might hold open handles to \\.\WinDivert
-    let taskkill = sys32.join("taskkill.exe");
-    if taskkill.is_file() {
-        let worker_images = [
-            "goodbyedpi.exe",
-            "ciadpi.exe",
-            "zondpi-engine-worker.exe",
-            "zondpi-gui.exe",
-            "zondpi-cli.exe",
-            "zapret.exe",
-            "byedpi.exe",
+        const DELETE: u32 = 0x00010000;
+
+        let candidate_names = [
+            "WinDivert",
+            "WinDivert14",
+            "WinDivert22",
+            "windivert",
+            "windivert14",
+            "windivert22",
         ];
-        for img in &worker_images {
-            let _ = std::process::Command::new(&taskkill)
-                .args(["/F", "/T", "/IM", img])
-                .output();
-        }
-        // Give Windows kernel time to close handles and cleanup device references
-        std::thread::sleep(std::time::Duration::from_millis(500));
-    }
 
-    // 2. Stop and delete candidate WinDivert driver services via Windows SCM API
-    let driver_names = [
-        "windivert",
-        "windivert14",
-        "windivert22",
-        "WinDivert",
-        "WinDivert14",
-        "WinDivert22",
-    ];
+        unsafe {
+            let scm = OpenSCManagerW(null(), null(), SC_MANAGER_CONNECT);
+            if scm.is_null() {
+                return Ok(());
+            }
 
-    if let Ok(manager) = ServiceManager::local_computer(None::<&str>, ServiceManagerAccess::CONNECT) {
-        for name in &driver_names {
-            if let Ok(driver_svc) = manager.open_service(
-                *name,
-                ServiceAccess::STOP | ServiceAccess::DELETE | ServiceAccess::QUERY_STATUS,
-            ) {
-                if let Ok(status) = driver_svc.query_status() {
-                    if status.current_state != ServiceState::Stopped {
-                        info!(driver = %name, "Stopping WinDivert driver service via SCM");
-                        let _ = driver_svc.stop();
-                        std::thread::sleep(std::time::Duration::from_millis(300));
+            for name in &candidate_names {
+                let name_wide: Vec<u16> = name.encode_utf16().chain(std::iter::once(0)).collect();
+                let svc = OpenServiceW(
+                    scm,
+                    name_wide.as_ptr(),
+                    SERVICE_QUERY_CONFIG | SERVICE_QUERY_STATUS | SERVICE_STOP | DELETE,
+                );
+
+                if svc.is_null() {
+                    continue;
+                }
+
+                // 1. Query service configuration to retrieve lpBinaryPathName and verify ownership
+                let mut bytes_needed = 0u32;
+                let _ = QueryServiceConfigW(svc, std::ptr::null_mut(), 0, &mut bytes_needed);
+                let mut binary_path_opt: Option<String> = None;
+
+                if bytes_needed > 0 {
+                    let mut buf = vec![0u8; bytes_needed as usize];
+                    let p_config = buf.as_mut_ptr() as *mut QUERY_SERVICE_CONFIGW;
+                    if QueryServiceConfigW(svc, p_config, bytes_needed, &mut bytes_needed) != 0 {
+                        let path_ptr = (*p_config).lpBinaryPathName;
+                        if !path_ptr.is_null() {
+                            let mut len = 0;
+                            while *path_ptr.add(len) != 0 {
+                                len += 1;
+                            }
+                            let slice = std::slice::from_raw_parts(path_ptr, len);
+                            binary_path_opt = Some(String::from_utf16_lossy(slice));
+                        }
                     }
                 }
-                info!(driver = %name, "Deleting WinDivert driver service from SCM");
-                let _ = driver_svc.delete();
+
+                let is_owned = match binary_path_opt {
+                    Some(ref p) => is_zondpi_owned_driver_path(p),
+                    None => false,
+                };
+
+                if !is_owned {
+                    info!(
+                        driver = %name,
+                        path = ?binary_path_opt,
+                        "WinDivert driver service is not owned by ZonDPI; preserving external driver"
+                    );
+                    CloseServiceHandle(svc);
+                    continue;
+                }
+
+                info!(
+                    driver = %name,
+                    path = ?binary_path_opt,
+                    "ZonDPI-owned WinDivert driver detected; proceeding with cleanup"
+                );
+
+                // 2. Stop the driver service if running
+                let mut status: SERVICE_STATUS = std::mem::zeroed();
+                if QueryServiceStatus(svc, &mut status) != 0
+                    && status.dwCurrentState
+                        != windows_sys::Win32::System::Services::SERVICE_STOPPED
+                {
+                    info!(driver = %name, "Stopping ZonDPI-owned WinDivert driver service");
+                    let mut stop_status: SERVICE_STATUS = std::mem::zeroed();
+                    let _ = ControlService(svc, SERVICE_CONTROL_STOP, &mut stop_status);
+                    std::thread::sleep(std::time::Duration::from_millis(300));
+                }
+
+                // 3. Delete driver service and safely handle ERROR_SERVICE_MARKED_FOR_DELETE (1072)
+                if DeleteService(svc) != 0 {
+                    info!(driver = %name, "ZonDPI-owned WinDivert driver service deleted successfully");
+                } else {
+                    let err = GetLastError();
+                    if err == ERROR_SERVICE_MARKED_FOR_DELETE {
+                        info!(
+                            driver = %name,
+                            "Driver service is marked for deletion (1072); waiting bounded time for handle release"
+                        );
+                        let start = std::time::Instant::now();
+                        let mut finalized = false;
+                        while start.elapsed() < std::time::Duration::from_secs(2) {
+                            std::thread::sleep(std::time::Duration::from_millis(250));
+                            let mut st: SERVICE_STATUS = std::mem::zeroed();
+                            if QueryServiceStatus(svc, &mut st) == 0
+                                && GetLastError() == ERROR_SERVICE_DOES_NOT_EXIST
+                            {
+                                finalized = true;
+                                break;
+                            }
+                        }
+
+                        if finalized {
+                            info!(driver = %name, "Driver service deletion finalized successfully");
+                        } else {
+                            info!(
+                                driver = %name,
+                                "WinDivert service marked for deletion (ERROR 1072); Windows kernel will finalize removal once remaining handles are closed or upon reboot"
+                            );
+                        }
+                    } else if err == ERROR_SERVICE_DOES_NOT_EXIST {
+                        // Already removed
+                    } else {
+                        warn!(driver = %name, error_code = err, "Driver service deletion returned SCM status");
+                    }
+                }
+
+                CloseServiceHandle(svc);
             }
+
+            CloseServiceHandle(scm);
         }
     }
 
-    // 3. Secondary hardened fallback via net.exe stop and sc.exe delete
-    let net_exe = sys32.join("net.exe");
-    let sc_exe = sys32.join("sc.exe");
-
-    for name in &["windivert", "windivert14", "windivert22"] {
-        if net_exe.is_file() {
-            let _ = std::process::Command::new(&net_exe)
-                .args(["stop", name, "/y"])
-                .output();
-        }
-        if sc_exe.is_file() {
-            let _ = std::process::Command::new(&sc_exe)
-                .args(["delete", name])
-                .output();
-        }
-    }
-
-    // Secondary pass: trigger stop once more to immediately finalize any pending marked-for-deletion services
-    for name in &["windivert", "windivert14", "windivert22"] {
-        if net_exe.is_file() {
-            let _ = std::process::Command::new(&net_exe)
-                .args(["stop", name, "/y"])
-                .output();
-        }
-    }
-
-    std::thread::sleep(std::time::Duration::from_millis(300));
-    info!("WinDivert kernel driver cleanup completed");
     Ok(())
 }
 
-/// Uninstalls ZonDPI service from Windows SCM and thoroughly purges WinDivert drivers.
+/// Uninstalls ZonDPI service from Windows SCM and cleans up ZonDPI-owned driver instances.
 pub fn uninstall_service() -> Result<(), ServiceManagementError> {
-    // 1. Forcibly clean up WinDivert driver and worker processes first
-    let _ = cleanup_windivert_driver();
-
     let manager = ServiceManager::local_computer(None::<&str>, ServiceManagerAccess::CONNECT)?;
 
     let service = match manager.open_service(
@@ -227,10 +274,10 @@ pub fn uninstall_service() -> Result<(), ServiceManagementError> {
         Err(windows_service::Error::Winapi(ref io_err)) if io_err.raw_os_error() == Some(1060) => {
             // ERROR_SERVICE_DOES_NOT_EXIST (1060 / 0x424) - Idempotent removal
             info!(
-                "Service '{}' does not exist in SCM, continuing driver cleanup",
+                "Service '{}' does not exist in SCM, verifying driver state",
                 SERVICE_NAME
             );
-            let _ = cleanup_windivert_driver();
+            let _ = cleanup_owned_windivert_driver();
             if let Ok(paths) = crate::runtime_paths::RuntimePaths::discover() {
                 let dns_ctrl = zondpi_dns::DnsCompatibilityController::new(&paths.data_root);
                 let _ = dns_ctrl.restore_dns();
@@ -240,27 +287,45 @@ pub fn uninstall_service() -> Result<(), ServiceManagementError> {
         Err(e) => return Err(e.into()),
     };
 
-    // Stop service first if running
+    // 1. Stop service first if running, allowing ZonDPI workers to exit and release device handles
     if let Ok(status) = service.query_status() {
         if status.current_state != ServiceState::Stopped {
-            info!("Stopping service prior to deletion");
+            info!("Stopping ZonDPI service prior to deletion");
             let _ = service.stop();
-            std::thread::sleep(std::time::Duration::from_millis(500));
+            // Bounded wait for service to fully stop and worker handles to close
+            let start = std::time::Instant::now();
+            while start.elapsed() < std::time::Duration::from_secs(3) {
+                std::thread::sleep(std::time::Duration::from_millis(200));
+                if let Ok(st) = service.query_status() {
+                    if st.current_state == ServiceState::Stopped {
+                        break;
+                    }
+                }
+            }
         }
     }
 
+    // 2. Delete ZonDPI service from SCM
     info!("Deleting service '{}' from SCM", SERVICE_NAME);
-    service.delete()?;
-    info!("Service '{}' deleted successfully", SERVICE_NAME);
-
-    // 2. Final sweep of WinDivert driver services to ensure 100% clean teardown
-    let _ = cleanup_windivert_driver();
+    match service.delete() {
+        Ok(_) => info!("Service '{}' deleted successfully", SERVICE_NAME),
+        Err(windows_service::Error::Winapi(ref io_err)) if io_err.raw_os_error() == Some(1072) => {
+            info!(
+                "Service '{}' marked for deletion (1072); will finalize when handles close",
+                SERVICE_NAME
+            );
+        }
+        Err(e) => return Err(e.into()),
+    }
 
     // 3. Ensure any active adapter DNS override is completely restored on uninstall
     if let Ok(paths) = crate::runtime_paths::RuntimePaths::discover() {
         let dns_ctrl = zondpi_dns::DnsCompatibilityController::new(&paths.data_root);
         let _ = dns_ctrl.restore_dns();
     }
+
+    // 4. Clean up WinDivert driver ONLY if owned by ZonDPI
+    let _ = cleanup_owned_windivert_driver();
 
     Ok(())
 }

@@ -28,11 +28,12 @@ impl LogRingBuffer {
             return;
         }
 
+        let sanitized_line = sanitize_log_presentation(trimmed);
         let now = chrono_timestamp();
         let entry = LogEntryDto {
             timestamp: now,
             stream: stream.to_string(),
-            line: trimmed.to_string(),
+            line: sanitized_line,
         };
 
         if let Ok(mut lock) = self.entries.lock() {
@@ -59,6 +60,38 @@ impl LogRingBuffer {
         if let Ok(mut lock) = self.entries.lock() {
             lock.clear();
         }
+    }
+}
+
+/// Sanitizes donation wallet addresses and crypto donation strings from presentation output.
+/// Preserves exact upstream source files while preventing wallet/donation strings in UI/CLI logs.
+pub fn sanitize_log_presentation(line: &str) -> String {
+    let lower = line.to_lowercase();
+    if lower.contains("donate")
+        || lower.contains("bitcoin")
+        || lower.contains("btc")
+        || lower.contains("wallet")
+        || lower.contains("monero")
+    {
+        let words: Vec<&str> = line.split_whitespace().collect();
+        let mut new_words = Vec::new();
+        for w in words {
+            let clean_w = w.trim_matches(|c: char| !c.is_alphanumeric());
+            let is_btc = (clean_w.starts_with("bc1")
+                || clean_w.starts_with('1')
+                || clean_w.starts_with('3'))
+                && clean_w.len() >= 26
+                && clean_w.len() <= 45;
+            let is_eth = clean_w.starts_with("0x") && clean_w.len() == 42;
+            if is_btc || is_eth {
+                new_words.push("[redacted]");
+            } else {
+                new_words.push(w);
+            }
+        }
+        new_words.join(" ")
+    } else {
+        line.to_string()
     }
 }
 
@@ -100,5 +133,14 @@ mod tests {
         assert_eq!(last_two.len(), 2);
         assert_eq!(last_two[0].line, "line 3");
         assert_eq!(last_two[1].line, "line 4");
+    }
+
+    #[test]
+    fn test_sanitize_log_presentation() {
+        let input = "GoodbyeDPI running. Donate Bitcoin: 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa or ETH 0x71C7656EC7ab88b098defB751B7401B5f6d8976F thank you!";
+        let sanitized = sanitize_log_presentation(input);
+        assert!(!sanitized.contains("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"));
+        assert!(!sanitized.contains("0x71C7656EC7ab88b098defB751B7401B5f6d8976F"));
+        assert!(sanitized.contains("[redacted]"));
     }
 }

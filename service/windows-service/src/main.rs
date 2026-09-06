@@ -115,8 +115,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Ok(())
         }
         Some(Commands::CleanDriver) => {
-            service_scm::cleanup_windivert_driver()?;
-            println!("WinDivert kernel driver and worker processes cleaned up successfully.");
+            service_scm::cleanup_owned_windivert_driver()?;
+            println!("ZonDPI-owned WinDivert kernel driver cleaned up successfully.");
             Ok(())
         }
         Some(Commands::Version) => {

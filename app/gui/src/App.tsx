@@ -27,6 +27,12 @@ interface LogEntry {
   line: string;
 }
 
+function sanitizePresentationText(text: string): string {
+  return text
+    .replace(/\b(bc1|[13])[a-km-zA-HJ-NP-Z1-9]{25,39}\b/g, "[redacted]")
+    .replace(/\b0x[a-fA-F0-9]{40}\b/g, "[redacted]");
+}
+
 function normalizeLogs(rawLogs: LogEntry[]): LogEntry[] {
   const result: LogEntry[] = [];
   const seenMilestones = new Set<string>();
@@ -445,7 +451,7 @@ function App() {
                 <div className="log-empty">Henüz kaydedilmiş günlük bulunmuyor.</div>
               ) : (showRawLogs && developerMode ? logs : normalizeLogs(logs)).map((log, i) => (
                 <div key={i} className="log-line">
-                  <span className="log-ts">[{log.timestamp}]</span> {log.line}
+                  <span className="log-ts">[{log.timestamp}]</span> {sanitizePresentationText(log.line)}
                 </div>
               ))}
             </div>

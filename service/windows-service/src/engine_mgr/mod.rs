@@ -15,9 +15,7 @@ use crate::supervisor::{ProcessSupervisor, SupervisorConfig, SupervisorState};
 use zondpi_compatibility::{
     CompatibilityPolicy, EngineRecommendation, SecurityDetectorTrait, SystemSecurityDetector,
 };
-use zondpi_dns::{
-    AdapterDnsOps, DnsCompatibilityController, DnsManagerError, DnsProvider,
-};
+use zondpi_dns::{AdapterDnsOps, DnsCompatibilityController, DnsManagerError, DnsProvider};
 use zondpi_ipc_protocol::{
     HealthStatusDto, LogEntryDto, ProfileSummaryDto, RecommendationDto, ServiceStatusDto,
 };
@@ -159,7 +157,8 @@ impl EngineManager {
             vec![],
         ));
 
-        let dns_controller = DnsCompatibilityController::with_ops(&runtime_paths.data_root, dns_ops);
+        let dns_controller =
+            DnsCompatibilityController::with_ops(&runtime_paths.data_root, dns_ops);
         let _ = dns_controller.handle_boot_recovery(false, DnsProvider::Automatic);
 
         let inner = ManagerInner {
@@ -183,7 +182,6 @@ impl EngineManager {
             mutation_lock: Arc::new(Mutex::new(())),
         }
     }
-
 
     /// Loads and parses a profile definition from disk safely.
     pub fn load_profile(&self, profile_id: &str) -> Result<ProfileDefinition, EngineManagerError> {
@@ -307,7 +305,11 @@ impl EngineManager {
 
     /// Resolves the effective profile to apply, enforcing that Kaspersky environments
     /// always use the validated turkey-default -5 semantics regardless of ISP-specific recommendations.
-    pub fn resolve_effective_profile<'a>(&self, engine: EngineId, requested_profile: &'a str) -> &'a str {
+    pub fn resolve_effective_profile<'a>(
+        &self,
+        engine: EngineId,
+        requested_profile: &'a str,
+    ) -> &'a str {
         let sec_env = self.security_detector.detect();
         let kaspersky_detected = sec_env.contains_product("kaspersky");
         if kaspersky_detected && engine == EngineId::GoodbyeDpi {
@@ -351,16 +353,17 @@ impl EngineManager {
         // 2. If Kaspersky is active and using GoodbyeDpi:
         // Apply ZonDPI-managed adapter DNS override and suppress packet DNS redirect
         let suppress_dns_redirect = kaspersky_detected;
-        if engine == EngineId::GoodbyeDpi && kaspersky_detected {
-            if inner.dns_provider.should_override_system() {
-                match inner.dns_controller.apply_dns(inner.dns_provider) {
-                    Ok(_) => {
-                        inner.kaspersky_dns_override_applied = true;
-                    }
-                    Err(e) => {
-                        inner.last_error = Some(e.to_string());
-                        return Err(EngineManagerError::Dns(e));
-                    }
+        if engine == EngineId::GoodbyeDpi
+            && kaspersky_detected
+            && inner.dns_provider.should_override_system()
+        {
+            match inner.dns_controller.apply_dns(inner.dns_provider) {
+                Ok(_) => {
+                    inner.kaspersky_dns_override_applied = true;
+                }
+                Err(e) => {
+                    inner.last_error = Some(e.to_string());
+                    return Err(EngineManagerError::Dns(e));
                 }
             }
         }
@@ -552,7 +555,8 @@ impl EngineManager {
         let sec_env = self.security_detector.detect();
         let kaspersky_detected = sec_env.contains_product("kaspersky");
 
-        let (security_compatibility, dns_compatibility_method, dns_provider) = if kaspersky_detected {
+        let (security_compatibility, dns_compatibility_method, dns_provider) = if kaspersky_detected
+        {
             (
                 Some("Kaspersky".to_string()),
                 Some("Sistem DNS yapılandırması".to_string()),

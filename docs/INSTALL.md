@@ -61,19 +61,17 @@ Kurulum yapmadan çalıştırmak için:
 1. Windows **Ayarlar** -> **Yüklü Uygulamalar** (veya Denetim Masası -> Program Ekle/Kaldır) bölümüne gidin.
 2. **ZonDPI** uygulamasını bulun ve **Kaldır** seçeneğini tıklayın.
 3. Kaldırıcı (Uninstaller) otomatik olarak:
-   - Çalışan ZonDPI ve motor süreçlerini (`goodbyedpi.exe`, `ciadpi.exe` vb.) güvenle sonlandırır.
-   - `WinDivert` çekirdek sürücüsünü bellekten boşaltır ve Windows SCM kayıtlarından tamamen siler (Error 1072 veya yetim sürücü bırakmaz).
+   - ZonDPI Windows Hizmetini (`ZonDPI`) durdurur. Hizmet durdurulduğunda ZonDPI tarafından başlatılan iş parçacıkları Job Object ve süreç kimliği üzerinden güvenle kapatılır ve aygıt tanıtıcıları serbest bırakılır.
+   - Harici süreçlere müdahale etmeksizin yalnızca ZonDPI mülkiyetindeki `WinDivert` sürücü kayıtları güvenle temizlenir (Error 1072 durumunda sınırlandırılmış bekleme ve durum sorgusu yapılır).
    - Ağ bağdaştırıcısı DNS ayarlarını orijinal durumuna geri döndürür.
-   - ZonDPI Windows Hizmetini (`ZonDPI`) durdurur ve SCM'den siler.
+   - ZonDPI Windows Hizmetini SCM kayıtlarından kaldırır.
    - `%ProgramFiles%\ZonDPI` altındaki tüm program dosyalarını temizler.
 
-### Komut Satırından Hızlı Sürücü Temizliği:
+### Manuel Sürücü ve Hizmet Temizliği:
 Yönetici olarak açılmış PowerShell veya Komut İstemi'nde:
 ```powershell
-# WinDivert sürücüsünü ve süreçleri anında temizle:
+# ZonDPI mülkiyetindeki sürücü ve servisleri temizleme:
 zondpi-service.exe clean-driver
 # veya CLI ile:
 zondpi-cli.exe clean-driver
-# veya PowerShell betiği ile:
-.\tools\cleanup_windivert.ps1
 ```

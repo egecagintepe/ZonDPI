@@ -5,7 +5,7 @@ use thiserror::Error;
 use windows_sys::Win32::Foundation::{CloseHandle, GetLastError, HANDLE, INVALID_HANDLE_VALUE};
 use windows_sys::Win32::System::JobObjects::{
     AssignProcessToJobObject, CreateJobObjectW, JobObjectExtendedLimitInformation,
-    SetInformationJobObject, JOBOBJECT_BASIC_LIMIT_INFORMATION,
+    SetInformationJobObject, TerminateJobObject, JOBOBJECT_BASIC_LIMIT_INFORMATION,
     JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
 };
 
@@ -85,6 +85,19 @@ impl JobObjectHandle {
             return Err(JobObjectError::AssignProcessFailed(err));
         }
 
+        Ok(())
+    }
+
+    /// Explicitly terminates all processes associated with this Job Object.
+    pub fn terminate(&self, exit_code: u32) -> Result<(), JobObjectError> {
+        if self.0.is_null() || self.0 == INVALID_HANDLE_VALUE {
+            return Err(JobObjectError::InvalidHandle);
+        }
+        let success = unsafe { TerminateJobObject(self.0, exit_code) };
+        if success == 0 {
+            let err = unsafe { GetLastError() };
+            return Err(JobObjectError::SetInfoFailed(err));
+        }
         Ok(())
     }
 

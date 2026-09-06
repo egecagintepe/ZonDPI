@@ -726,9 +726,7 @@ impl DnsStateManager {
     fn enforce_privileged_acl(path: &Path) -> Result<(), std::io::Error> {
         let path_str = path.to_string_lossy();
         let sys_root = std::env::var("SystemRoot").unwrap_or_else(|_| "C:\\Windows".to_string());
-        let icacls = PathBuf::from(sys_root)
-            .join("System32")
-            .join("icacls.exe");
+        let icacls = PathBuf::from(sys_root).join("System32").join("icacls.exe");
 
         if icacls.is_file() {
             // Remove inheritance, grant SYSTEM full, grant Administrators full, grant Users read-only
@@ -1046,19 +1044,13 @@ mod tests {
             DnsProvider::Cloudflare,
         );
         controller.state_manager().save_state(&state).unwrap();
-        assert!(controller
-            .state_manager()
-            .state_file_path()
-            .is_file());
+        assert!(controller.state_manager().state_file_path().is_file());
 
         let rec_res = controller
             .handle_boot_recovery(false, DnsProvider::Automatic)
             .unwrap();
         assert!(rec_res.is_none());
-        assert!(!controller
-            .state_manager()
-            .state_file_path()
-            .is_file());
+        assert!(!controller.state_manager().state_file_path().is_file());
 
         // Case B: Create stale state on disk, SHOULD resume
         let adapter2 = controller.ops().find_active_outbound_adapter().unwrap();
@@ -1128,12 +1120,21 @@ mod tests {
         let controller = DnsCompatibilityController::with_ops(&temp_dir, Box::new(mock));
 
         let apply_res = controller.apply_dns(DnsProvider::Cloudflare).unwrap();
-        assert_eq!(apply_res.original_config.ipv4_servers, vec!["8.8.8.8", "8.8.4.4"]);
+        assert_eq!(
+            apply_res.original_config.ipv4_servers,
+            vec!["8.8.8.8", "8.8.4.4"]
+        );
 
         // Verify loaded state contains the exact pre-existing static DNS
         let loaded = controller.state_manager().load_state().unwrap().unwrap();
-        assert_eq!(loaded.original_config.ipv4_servers, vec!["8.8.8.8", "8.8.4.4"]);
-        assert_eq!(loaded.original_config.ipv6_servers, vec!["2001:4860:4860::8888"]);
+        assert_eq!(
+            loaded.original_config.ipv4_servers,
+            vec!["8.8.8.8", "8.8.4.4"]
+        );
+        assert_eq!(
+            loaded.original_config.ipv6_servers,
+            vec!["2001:4860:4860::8888"]
+        );
         assert!(!loaded.original_config.is_dhcp_v4);
 
         controller.restore_dns().unwrap();
@@ -1193,7 +1194,15 @@ mod tests {
         let json = serde_json::to_string_pretty(&state).unwrap();
 
         // State file must only contain schema/operational data, zero web browsing or domain names
-        let forbidden_words = ["discord", "youtube", "twitter", "instagram", "browser", "url", "http"];
+        let forbidden_words = [
+            "discord",
+            "youtube",
+            "twitter",
+            "instagram",
+            "browser",
+            "url",
+            "http",
+        ];
         for word in &forbidden_words {
             assert!(
                 !json.to_lowercase().contains(word),
@@ -1203,4 +1212,3 @@ mod tests {
         }
     }
 }
-

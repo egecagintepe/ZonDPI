@@ -270,7 +270,12 @@ fn render_success_response(response: &IpcResponse, elapsed: std::time::Duration,
                 } else {
                     println!("Recent Engine Logs ({} lines):", logs.len());
                     for log in logs {
-                        println!("[{}] [{}] {}", log.timestamp, log.stream, log.line);
+                        println!(
+                            "[{}] [{}] {}",
+                            log.timestamp,
+                            log.stream,
+                            sanitize_presentation_output(&log.line)
+                        );
                     }
                 }
             }
@@ -595,71 +600,65 @@ async fn run_test_connectivity(
 }
 
 async fn run_clean_driver(pipe_name: &str) -> Result<(), Box<dyn std::error::Error>> {
-    println!("ZonDPI ve WinDivert surucu temizleme islemi baslatiliyor...");
+    println!("ZonDPI motoru ve bagli surucu kaynaklari guvenle sonlandiriliyor...");
 
     // 1. Try to stop engine gracefully over IPC if service is active
     let _ = send_ipc_request(pipe_name, IpcCommand::StopEngine).await;
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 
-    // 2. Kill worker processes holding handles
-    let sys_root = std::env::var("SystemRoot").unwrap_or_else(|_| "C:\\Windows".to_string());
-    let sys32 = std::path::PathBuf::from(&sys_root).join("System32");
-    let taskkill = sys32.join("taskkill.exe");
-    if taskkill.is_file() {
-        for img in &["goodbyedpi.exe", "ciadpi.exe", "zondpi-engine-worker.exe", "zapret.exe", "byedpi.exe"] {
-            let _ = std::process::Command::new(&taskkill)
-                .args(["/F", "/T", "/IM", img])
-                .output();
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-    }
+    // 2. Delegate to zondpi-service clean-driver for ownership-verified SCM cleanup
+    let current_exe = std::env::current_exe().unwrap_or_default();
+    let service_exe = current_exe.parent().map(|p| p.join("zondpi-service.exe"));
+    let mut cleaned = false;
 
-    // 3. Stop and delete driver services
-    let net_exe = sys32.join("net.exe");
-    let sc_exe = sys32.join("sc.exe");
-
-    for name in &["windivert", "windivert14", "windivert22", "WinDivert", "WinDivert14", "WinDivert22"] {
-        if net_exe.is_file() {
-            let _ = std::process::Command::new(&net_exe)
-                .args(["stop", name, "/y"])
-                .output();
-        }
-        if sc_exe.is_file() {
-            let _ = std::process::Command::new(&sc_exe)
-                .args(["delete", name])
-                .output();
-        }
-    }
-
-    // Second pass for pending marked-for-deletion
-    for name in &["windivert", "windivert14", "windivert22"] {
-        if net_exe.is_file() {
-            let _ = std::process::Command::new(&net_exe)
-                .args(["stop", name, "/y"])
-                .output();
-        }
-    }
-
-    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
-
-    // 4. Verify
-    let mut still_running = false;
-    if sc_exe.is_file() {
-        if let Ok(out) = std::process::Command::new(&sc_exe).args(["query", "windivert"]).output() {
-            let stdout = String::from_utf8_lossy(&out.stdout);
-            if stdout.contains("RUNNING") {
-                still_running = true;
+    if let Some(ref svc) = service_exe {
+        if svc.is_file() {
+            let res = std::process::Command::new(svc).arg("clean-driver").output();
+            if let Ok(out) = res {
+                let stdout = String::from_utf8_lossy(&out.stdout);
+                print!("{}", stdout);
+                cleaned = true;
             }
         }
     }
 
-    if still_running {
-        println!("UYARI: WinDivert surucusu hala calisiyor gorunuyor.");
-        println!("Lutfen bu komutu 'Yonetici olarak calistir' secenegiyle acilmis bir PowerShell/CMD terminalinde calistirdiginizdan emin olun.");
-    } else {
-        println!("BASARILI: WinDivert cekirdek surucusu ve arka plan surecleri sistemden temizlendi.");
+    if !cleaned {
+        println!("Bilgi: ZonDPI motor islemi guvenle durduruldu ve aygit taniticilari serbest birakildi.");
+        println!("WinDivert cekirdek surucusu tum acik taniticilar kapandiginda Windows tarafindan dogal olarak bellekten bosaltilacaktir.");
     }
 
     Ok(())
+}
+
+/// Sanitizes donation addresses and crypto tokens from CLI presentation output.
+pub fn sanitize_presentation_output(line: &str) -> String {
+    let lower = line.to_lowercase();
+    if lower.contains("donate")
+        || lower.contains("bitcoin")
+        || lower.contains("btc")
+        || lower.contains("wallet")
+        || lower.contains("monero")
+    {
+        let words: Vec<&str> = line.split_whitespace().collect();
+        let mut new_words = Vec::new();
+        for w in words {
+            let clean_w = w.trim_matches(|c: char| !c.is_alphanumeric());
+            let is_btc = (clean_w.starts_with("bc1")
+                || clean_w.starts_with('1')
+                || clean_w.starts_with('3'))
+                && clean_w.len() >= 26
+                && clean_w.len() <= 45;
+            let is_eth = clean_w.starts_with("0x") && clean_w.len() == 42;
+            if is_btc || is_eth {
+                new_words.push("[redacted]");
+            } else {
+                new_words.push(w);
+            }
+        }
+        new_words.join(" ")
+    } else {
+        line.to_string()
+    }
 }
 
 pub fn render_status(status: &ServiceStatusDto, technical: bool) -> String {

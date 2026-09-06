@@ -210,7 +210,6 @@ pub struct ServiceStatusDto {
     pub dns_provider: Option<String>,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ProfileSummaryDto {
     pub id: String,

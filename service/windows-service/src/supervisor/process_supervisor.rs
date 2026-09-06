@@ -343,9 +343,36 @@ impl ProcessSupervisor {
             let name = inner.config.name.clone();
             info!(name = %name, timeout_secs = timeout.as_secs(), "Terminating worker process via Job Object");
 
+            // Explicitly terminate all processes in this Job Object first
+            let _ = job.terminate(0);
             // Dropping the job object handle when configured with KILL_ON_JOB_CLOSE
-            // guarantees all child processes in the job are immediately terminated by Windows kernel.
+            // guarantees all child processes in the job are terminated by Windows kernel.
             drop(job);
+        }
+
+        #[cfg(windows)]
+        if let Some(pid) = inner.pid {
+            // Defense in depth: Terminate ONLY the tracked child PID spawned by ZonDPI
+            use windows_sys::Win32::Foundation::CloseHandle;
+            use windows_sys::Win32::System::Threading::{
+                OpenProcess, TerminateProcess, WaitForSingleObject,
+                PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_SYNCHRONIZE, PROCESS_TERMINATE,
+            };
+
+            unsafe {
+                let handle = OpenProcess(
+                    PROCESS_TERMINATE | PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SYNCHRONIZE,
+                    0,
+                    pid,
+                );
+                if !handle.is_null()
+                    && handle != windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE
+                {
+                    let _ = TerminateProcess(handle, 0);
+                    let _ = WaitForSingleObject(handle, 1000);
+                    CloseHandle(handle);
+                }
+            }
         }
 
         inner.pid = None;
