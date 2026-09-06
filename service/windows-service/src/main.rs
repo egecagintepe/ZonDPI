@@ -43,6 +43,8 @@ enum Commands {
     Stop,
     /// Query SCM status of the installed Windows Service
     Status,
+    /// Stop running worker processes and remove WinDivert kernel driver
+    CleanDriver,
     /// Display version information
     Version,
 }
@@ -110,6 +112,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(Commands::Status) => {
             let status = service_scm::query_status()?;
             println!("Service 'ZonDPI' Status: {:?}", status.current_state);
+            Ok(())
+        }
+        Some(Commands::CleanDriver) => {
+            service_scm::cleanup_windivert_driver()?;
+            println!("WinDivert kernel driver and worker processes cleaned up successfully.");
             Ok(())
         }
         Some(Commands::Version) => {

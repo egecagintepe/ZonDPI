@@ -17,14 +17,34 @@
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL
+  DetailPrint "Stopping ZonDPI application and worker processes..."
+  nsExec::ExecToLog 'taskkill.exe /F /IM "goodbyedpi.exe" /T'
+  nsExec::ExecToLog 'taskkill.exe /F /IM "ciadpi.exe" /T'
+  nsExec::ExecToLog 'taskkill.exe /F /IM "zondpi-engine-worker.exe" /T'
+  nsExec::ExecToLog 'taskkill.exe /F /IM "zondpi-gui.exe" /T'
+  nsExec::ExecToLog 'taskkill.exe /F /IM "zondpi-cli.exe" /T'
+  Sleep 500
+
   DetailPrint "Stopping ZonDPI Windows Service..."
   nsExec::ExecToLog '"$INSTDIR\zondpi-service.exe" stop'
   Pop $0
-  Sleep 1000
-  DetailPrint "Unregistering ZonDPI Windows Service..."
+  Sleep 500
+
+  DetailPrint "Unregistering ZonDPI Windows Service and cleaning drivers..."
   nsExec::ExecToLog '"$INSTDIR\zondpi-service.exe" uninstall'
   Pop $0
-  DetailPrint "ZonDPI service removed."
+  Sleep 500
+
+  DetailPrint "Purging WinDivert kernel drivers from Windows SCM..."
+  nsExec::ExecToLog 'net.exe stop WinDivert /y'
+  nsExec::ExecToLog 'sc.exe delete WinDivert'
+  nsExec::ExecToLog 'net.exe stop WinDivert14 /y'
+  nsExec::ExecToLog 'sc.exe delete WinDivert14'
+  nsExec::ExecToLog 'net.exe stop WinDivert22 /y'
+  nsExec::ExecToLog 'sc.exe delete WinDivert22'
+  Sleep 500
+
+  DetailPrint "ZonDPI service and WinDivert kernel drivers removed cleanly."
 !macroend
 
 !macro customInstall

@@ -96,6 +96,8 @@ enum Commands {
         #[arg(short, long, default_value_t = 443)]
         port: u16,
     },
+    /// Forcibly stop worker processes and clean up lingering WinDivert kernel driver
+    CleanDriver,
 }
 
 #[tokio::main]
@@ -104,6 +106,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pipe_name = cli.pipe.clone();
 
     match &cli.command {
+        Commands::CleanDriver => {
+            return run_clean_driver(&pipe_name).await;
+        }
         Commands::TestConnectivity { target, port } => {
             return run_test_connectivity(&pipe_name, target, *port).await;
         }
@@ -155,7 +160,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ),
         Commands::TestConnectivity { .. }
         | Commands::DiagnoseNetwork { .. }
-        | Commands::TestProfile { .. } => unreachable!(),
+        | Commands::TestProfile { .. }
+        | Commands::CleanDriver => unreachable!(),
     };
 
     let start_time = Instant::now();
@@ -586,6 +592,74 @@ async fn run_test_connectivity(
     port: u16,
 ) -> Result<(), Box<dyn std::error::Error>> {
     run_diagnose_network(pipe_name, target, port).await
+}
+
+async fn run_clean_driver(pipe_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+    println!("ZonDPI ve WinDivert surucu temizleme islemi baslatiliyor...");
+
+    // 1. Try to stop engine gracefully over IPC if service is active
+    let _ = send_ipc_request(pipe_name, IpcCommand::StopEngine).await;
+
+    // 2. Kill worker processes holding handles
+    let sys_root = std::env::var("SystemRoot").unwrap_or_else(|_| "C:\\Windows".to_string());
+    let sys32 = std::path::PathBuf::from(&sys_root).join("System32");
+    let taskkill = sys32.join("taskkill.exe");
+    if taskkill.is_file() {
+        for img in &["goodbyedpi.exe", "ciadpi.exe", "zondpi-engine-worker.exe", "zapret.exe", "byedpi.exe"] {
+            let _ = std::process::Command::new(&taskkill)
+                .args(["/F", "/T", "/IM", img])
+                .output();
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    }
+
+    // 3. Stop and delete driver services
+    let net_exe = sys32.join("net.exe");
+    let sc_exe = sys32.join("sc.exe");
+
+    for name in &["windivert", "windivert14", "windivert22", "WinDivert", "WinDivert14", "WinDivert22"] {
+        if net_exe.is_file() {
+            let _ = std::process::Command::new(&net_exe)
+                .args(["stop", name, "/y"])
+                .output();
+        }
+        if sc_exe.is_file() {
+            let _ = std::process::Command::new(&sc_exe)
+                .args(["delete", name])
+                .output();
+        }
+    }
+
+    // Second pass for pending marked-for-deletion
+    for name in &["windivert", "windivert14", "windivert22"] {
+        if net_exe.is_file() {
+            let _ = std::process::Command::new(&net_exe)
+                .args(["stop", name, "/y"])
+                .output();
+        }
+    }
+
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+
+    // 4. Verify
+    let mut still_running = false;
+    if sc_exe.is_file() {
+        if let Ok(out) = std::process::Command::new(&sc_exe).args(["query", "windivert"]).output() {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            if stdout.contains("RUNNING") {
+                still_running = true;
+            }
+        }
+    }
+
+    if still_running {
+        println!("UYARI: WinDivert surucusu hala calisiyor gorunuyor.");
+        println!("Lutfen bu komutu 'Yonetici olarak calistir' secenegiyle acilmis bir PowerShell/CMD terminalinde calistirdiginizdan emin olun.");
+    } else {
+        println!("BASARILI: WinDivert cekirdek surucusu ve arka plan surecleri sistemden temizlendi.");
+    }
+
+    Ok(())
 }
 
 pub fn render_status(status: &ServiceStatusDto, technical: bool) -> String {

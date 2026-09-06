@@ -391,9 +391,10 @@ impl GoodbyeDpiAdapter {
     }
 
 
-    /// Stops the GoodbyeDPI worker gracefully.
+    /// Stops the GoodbyeDPI worker gracefully and unloads the WinDivert driver.
     pub async fn stop(&mut self) -> Result<(), GoodbyeAdapterError> {
         self.supervisor.graceful_stop().await?;
+        crate::service_scm::stop_windivert_driver_service();
         Ok(())
     }
 
