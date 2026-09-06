@@ -4993,7 +4993,7 @@ dependencies = [
  "clap",
  "interprocess",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.20",
  "tokio",
  "zondpi-ipc-protocol",
 ]
@@ -5005,7 +5005,7 @@ dependencies = [
  "async-trait",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.20",
  "tokio",
  "tracing",
  "zondpi-packet-engine",
@@ -5017,7 +5017,7 @@ version = "1.0.5"
 dependencies = [
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.20",
  "tokio",
 ]
 
@@ -5027,7 +5027,7 @@ version = "1.0.5"
 dependencies = [
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.20",
  "tracing",
  "windows-sys 0.59.0",
 ]
@@ -5038,7 +5038,7 @@ version = "1.0.5"
 dependencies = [
  "async-trait",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.20",
  "tokio",
  "tracing",
  "zondpi-packet-engine",
@@ -5050,7 +5050,7 @@ version = "1.0.5"
 dependencies = [
  "async-trait",
  "serde",
- "thiserror 1.0.69",
+ "thiserror 2.0.20",
  "tokio",
  "tracing",
  "zondpi-packet-engine",
@@ -5081,7 +5081,7 @@ version = "1.0.5"
 dependencies = [
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.20",
  "tokio",
 ]
 
@@ -5092,7 +5092,7 @@ dependencies = [
  "async-trait",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.20",
  "tracing",
 ]
 
@@ -5102,7 +5102,7 @@ version = "1.0.5"
 dependencies = [
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.20",
  "zondpi-packet-engine",
 ]
 
@@ -5110,7 +5110,7 @@ dependencies = [
 name = "zondpi-protocol-parsers"
 version = "1.0.5"
 dependencies = [
- "thiserror 1.0.69",
+ "thiserror 2.0.20",
 ]
 
 [[package]]
@@ -5121,7 +5121,7 @@ dependencies = [
  "interprocess",
  "serde",
  "serde_json",
- "thiserror 1.0.69",
+ "thiserror 2.0.20",
  "tokio",
  "tracing",
  "tracing-subscriber",
