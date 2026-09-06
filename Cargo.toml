@@ -32,7 +32,7 @@ thiserror = "1.0"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 windows = "0.58"
-windows-sys = "0.59"
+windows-sys = "0.61"
 windows-service = "0.8.1"
 clap = { version = "4.5", features = ["derive"] }
 interprocess = { version = "2.2", features = ["tokio"] }

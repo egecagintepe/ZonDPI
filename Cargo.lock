@@ -5029,7 +5029,7 @@ dependencies = [
  "serde_json",
  "thiserror 1.0.69",
  "tracing",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5126,7 +5126,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "windows-service",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
  "zondpi-compatibility",
  "zondpi-diagnostics",
  "zondpi-dns",
